@@ -74,7 +74,7 @@ static void SaveSettings() {
 }
 
 // ---- Starfield model
-struct Star { float x, y, z, base, phase; };
+struct Star { float x, y, z; };
 
 // RenderWindow (GDI backbuffer)
 struct RenderWindow {
@@ -175,12 +175,10 @@ static void InitStars(RenderWindow* rw) {
     int w = max(1, r.right - r.left), h = max(1, r.bottom - r.top);
     rw->stars.clear();
     rw->stars.reserve(g_starCount);
-    std::uniform_real_distribution<float> ux(0.0f, (float)w);
-    std::uniform_real_distribution<float> uy(0.0f, (float)h);
-    std::uniform_real_distribution<float> uz(0.2f, 1.0f);
-    std::uniform_real_distribution<float> ub(0.6f, 1.0f);
-    std::uniform_real_distribution<float> uph(0.0f, 6.28318530718f);
-    for (int i = 0; i < g_starCount; ++i) rw->stars.push_back({ ux(rw->rng), uy(rw->rng), uz(rw->rng), ub(rw->rng), uph(rw->rng) });
+    std::uniform_real_distribution<float> ux(-1.0f, (float)w);
+    std::uniform_real_distribution<float> uy(-1.0f, (float)h);
+    std::uniform_real_distribution<float> uz(0.1f, 1.0f);
+    for (int i = 0; i < g_starCount; ++i) rw->stars.push_back({ ux(rw->rng), uy(rw->rng), uz(rw->rng) });
 }
 
 // ---- Rendering (GDI)
@@ -208,7 +206,6 @@ static void RenderFrameGDI(RenderWindow* rw, float dt, float totalTime) {
 
    HBRUSH coreBrush = NULL;
 
-
     for (auto& s : rw->stars) {
         s.z -= 0.5f * speed * dt;
         if (s.z <= 0.05f) {
@@ -217,7 +214,7 @@ static void RenderFrameGDI(RenderWindow* rw, float dt, float totalTime) {
             std::uniform_real_distribution<float> uz(0.5f, 1.0f);
             std::uniform_real_distribution<float> ub(0.6f, 1.0f);
             std::uniform_real_distribution<float> uph(0.0f, 6.28318530718f);
-            s.x = ux(rw->rng); s.y = uy(rw->rng); s.z = uz(rw->rng); s.base = ub(rw->rng); s.phase = uph(rw->rng);
+            s.x = ux(rw->rng); s.y = uy(rw->rng); s.z = uz(rw->rng); 
         }
         float px = (s.x - cx) / s.z + cx;
         float py = (s.y - cy) / s.z + cy;
@@ -225,10 +222,9 @@ static void RenderFrameGDI(RenderWindow* rw, float dt, float totalTime) {
         if (pszf < 1.0f) pszf = 1.0f;
         int psz = (int)ceil(pszf);
 
-        float tw = s.base + (sinf(s.phase + (float)totalTime * 5.0f) * 0.5f + 0.5f);
-        int r = (int)std::fmin(255.0f, baseR * tw);
-        int g = (int)std::fmin(255.0f, baseG * tw);
-        int bcol = (int)std::fmin(255.0f, baseB * tw);
+        int r = baseR;
+        int g = baseG;
+        int bcol = baseB;
 
         // draw core
         HBRUSH oldCore = (HBRUSH)SelectObject(rw->backHdc, coreBrush);
@@ -360,19 +356,14 @@ static void CreateSettingsControls(HWND dlg) {
     CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", NULL, WS_CHILD | WS_VISIBLE | ES_NUMBER | ES_LEFT, 100, 8, 80, 20, dlg, (HMENU)CID_EDIT_STARS, g_hInst, NULL);
     CreateWindowExW(0, L"STATIC", L"Speed (%) :", WS_CHILD | WS_VISIBLE, 10, 40, 80, 18, dlg, NULL, g_hInst, NULL);
     CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", NULL, WS_CHILD | WS_VISIBLE | ES_NUMBER | ES_LEFT, 100, 38, 80, 20, dlg, (HMENU)CID_EDIT_SPEED, g_hInst, NULL);
-    CreateWindowExW(0, L"STATIC", L"Twinkle (%) :", WS_CHILD | WS_VISIBLE, 10, 70, 80, 18, dlg, NULL, g_hInst, NULL);
-    CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", NULL, WS_CHILD | WS_VISIBLE | ES_NUMBER | ES_LEFT, 100, 68, 80, 20, dlg, (HMENU)CID_EDIT_TWINKLE, g_hInst, NULL);
-    CreateWindowExW(0, L"STATIC", L"Color preset:", WS_CHILD | WS_VISIBLE, 10, 100, 80, 18, dlg, NULL, g_hInst, NULL);
-    HWND hCombo = CreateWindowExW(0, L"COMBOBOX", NULL, WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL, 100, 98, 140, 120, dlg, (HMENU)CID_COMBO_COLOR, g_hInst, NULL);
+    CreateWindowExW(0, L"STATIC", L"Color preset:", WS_CHILD | WS_VISIBLE, 10, 70, 80, 18, dlg, NULL, g_hInst, NULL);
+    HWND hCombo = CreateWindowExW(0, L"COMBOBOX", NULL, WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL, 100, 68, 140, 120, dlg, (HMENU)CID_COMBO_COLOR, g_hInst, NULL);
     SendMessageW(hCombo, CB_ADDSTRING, 0, (LPARAM)L"Warm White");
     SendMessageW(hCombo, CB_ADDSTRING, 0, (LPARAM)L"Cool White");
     SendMessageW(hCombo, CB_ADDSTRING, 0, (LPARAM)L"Blue");
     SendMessageW(hCombo, CB_ADDSTRING, 0, (LPARAM)L"Yellow");
-    CreateWindowExW(0, L"STATIC", L"Preview:", WS_CHILD | WS_VISIBLE, 260, 10, 80, 18, dlg, NULL, g_hInst, NULL);
-    CreateWindowExW(WS_EX_CLIENTEDGE, L"STATIC", NULL, WS_CHILD | WS_VISIBLE | SS_OWNERDRAW, 260, 30, 80, 80, dlg, (HMENU)CID_PREVIEW, g_hInst, NULL);
-    CreateWindowExW(0, L"BUTTON", L"Pick color", WS_CHILD | WS_VISIBLE, 100, 130, 80, 24, dlg, (HMENU)CID_BUTTON_COLOR, g_hInst, NULL);
-    CreateWindowExW(0, L"BUTTON", L"OK", WS_CHILD | WS_VISIBLE, 80, 170, 80, 26, dlg, (HMENU)CID_OK, g_hInst, NULL);
-    CreateWindowExW(0, L"BUTTON", L"Cancel", WS_CHILD | WS_VISIBLE, 180, 170, 80, 26, dlg, (HMENU)CID_CANCEL, g_hInst, NULL);
+    CreateWindowExW(0, L"BUTTON", L"OK", WS_CHILD | WS_VISIBLE, 80, 100, 80, 26, dlg, (HMENU)CID_OK, g_hInst, NULL);
+    CreateWindowExW(0, L"BUTTON", L"Cancel", WS_CHILD | WS_VISIBLE, 180, 98, 80, 26, dlg, (HMENU)CID_CANCEL, g_hInst, NULL);
 }
 
 // Settings window proc handles control actions and closes window

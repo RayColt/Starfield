@@ -1,4 +1,4 @@
-//{{NO_DEPENDENCIES}}
+﻿//{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.
 // Used by resource.rc
 //
@@ -1622,3 +1622,4 @@
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
+

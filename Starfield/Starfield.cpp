@@ -1,4 +1,4 @@
-// Starfield.cpp
+﻿// Starfield.cpp
 // Build as Windows GUI (/SUBSYSTEM:WINDOWS)
 // Rename output .exe -> .scr to register with Windows Screensaver dialog.
 
@@ -518,3 +518,4 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int) {
     LocalFree(argv);
     return 0;
 }
+

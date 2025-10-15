@@ -1,6 +1,7 @@
 // MyStarfield.cpp
 // Direct2D multi-monitor screensaver with animated preview, robust arg parsing, logging,
-// input debounce, smart settings handling with ForcePopup fallback and resource presence check.
+// input debounce, strict input filtering (foreground and mouse movement threshold),
+// smart settings handling with ForcePopup fallback and resource presence check.
 // Requires: resource.h + resources.rc (IDD_SETTINGS, control IDs).
 // Link: d2d1.lib
 
@@ -93,10 +94,13 @@ static HINSTANCE g_hInst = NULL;
 static std::vector<RenderWindow*> g_windows;
 static bool g_running = true;
 
-// Input debounce
+// Input debounce and strict input filtering
 static LARGE_INTEGER g_perfFreq;
 static LARGE_INTEGER g_startCounter;
 static double g_inputDebounceSeconds = 2.5;
+static POINT g_startMouse = { 0,0 };
+static bool g_startMouseInit = false;
+static const int g_mouseMoveThreshold = 12; // pixels
 
 // Utility: robust arg parsing (handles /p:1234 and /p 1234)
 static void ParseArgs(int argc, wchar_t** argv, wchar_t& modeOut, HWND& hwndOut) {
@@ -146,6 +150,18 @@ static HRESULT CreateRT(RenderWindow* rw) {
     return rw->factory->CreateHwndRenderTarget(D2D1::RenderTargetProperties(), props, &rw->rt);
 }
 
+// Forward declare preview proc used in registering
+LRESULT CALLBACK PreviewProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
+// Helper: check if foreground window belongs to this process
+static bool ForegroundIsOurWindow()
+{
+    HWND fg = GetForegroundWindow();
+    if (!fg) return false;
+    DWORD fgPid = 0; GetWindowThreadProcessId(fg, &fgPid);
+    return (fgPid == GetCurrentProcessId());
+}
+
 // Render a frame for a RenderWindow
 static void RenderFrame(RenderWindow* rw, float dt, float totalTime) {
     if (!rw->rt) return;
@@ -188,12 +204,17 @@ static void RenderFrame(RenderWindow* rw, float dt, float totalTime) {
 LRESULT CALLBACK FullWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     RenderWindow* rw = (RenderWindow*)GetWindowLongPtrW(hWnd, GWLP_USERDATA);
     switch (msg) {
-    case WM_CREATE: return 0;
+    case WM_CREATE:
+        // reset start mouse so movement is measured fresh
+        g_startMouseInit = false;
+        return 0;
     case WM_SIZE:
         if (rw) {
             GetClientRect(hWnd, &rw->rc);
             if (rw->rt) { rw->rt->Release(); rw->rt = nullptr; }
             CreateRT(rw);
+            // on resize, reset mouse baseline
+            g_startMouseInit = false;
         }
         return 0;
     case WM_KEYDOWN:
@@ -202,16 +223,38 @@ LRESULT CALLBACK FullWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) 
     case WM_MBUTTONDOWN:
     case WM_XBUTTONDOWN:
     case WM_MOUSEMOVE: {
+        // get elapsed seconds since start
         LARGE_INTEGER now; QueryPerformanceCounter(&now);
         double seconds = double(now.QuadPart - g_startCounter.QuadPart) / double(g_perfFreq.QuadPart);
-        if (seconds >= g_inputDebounceSeconds) {
-            log("Input after debounce -> exiting");
-            g_running = false;
-            PostQuitMessage(0);
-        }
-        else {
+
+        // still within debounce window: ignore
+        if (seconds < g_inputDebounceSeconds) {
             log("Ignored input during debounce");
+            return 0;
         }
+
+        // only consider input if the foreground window belongs to our process
+        if (!ForegroundIsOurWindow()) {
+            log("Ignored input because foreground window is not ours");
+            return 0;
+        }
+
+        // mouse-move needs a threshold to avoid jitter
+        if (msg == WM_MOUSEMOVE) {
+            POINT cur; GetCursorPos(&cur);
+            if (!g_startMouseInit) { g_startMouse = cur; g_startMouseInit = true; log("initialized start mouse pos"); return 0; }
+            int dx = abs(cur.x - g_startMouse.x);
+            int dy = abs(cur.y - g_startMouse.y);
+            if (dx < g_mouseMoveThreshold && dy < g_mouseMoveThreshold) {
+                log("Ignored small mouse jitter");
+                return 0;
+            }
+        }
+
+        // genuine input -> exit
+        log("Input considered deliberate -> exiting");
+        g_running = false;
+        PostQuitMessage(0);
         return 0;
     }
     case WM_DESTROY:
@@ -270,6 +313,12 @@ static void RunFull() {
     EnumDisplayMonitors(NULL, NULL, MonEnumProc, 0);
     QueryPerformanceFrequency(&g_perfFreq);
     QueryPerformanceCounter(&g_startCounter);
+
+    // initialize start mouse baseline
+    POINT p; GetCursorPos(&p);
+    g_startMouse = p;
+    g_startMouseInit = true;
+
     LARGE_INTEGER last; QueryPerformanceCounter(&last);
     double total = 0.0;
     MSG msg;

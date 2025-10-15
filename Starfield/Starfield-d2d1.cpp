@@ -1,6 +1,6 @@
 // Starfield.cpp
-// Single-file screensaver with programmatic Settings dialog (no .rc required).
-// Direct2D preview and fullscreen; strict input filtering; programmatic modal settings dialog.
+// Build as Windows GUI (/SUBSYSTEM:WINDOWS)
+// Rename output .exe -> .scr to register with Windows Screensaver dialog.
 // Link: d2d1.lib
 
 #include <windows.h>

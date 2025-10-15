@@ -197,7 +197,7 @@ static inline std::string vprint(float v, int precision = 4)
 // as they approach because projection uses 1 / z.
 static const float Z_MIN = 2.0f;
 // decrease Z_MAX (e.g., 800) to bring more stars visually forward
-static const float Z_MAX = 80.0f;
+static const float Z_MAX = 33.0f;
 // FOCAL ~ 1.0 is appropriate for your sample values (x ~ [-1600..1600], z ~ [10..100])
 static const float FOCAL = 9.0f;
 // multiplier that controls drawn core size; increase for larger stars

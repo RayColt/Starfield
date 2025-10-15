@@ -16,7 +16,7 @@
 #pragma comment(lib, "comctl32.lib")
 
 // ---- Config / registry keys
-static LPCWSTR REG_KEY = L"Software\\MyStarfieldScreensaver";
+static LPCWSTR REG_KEY = L"Software\\StarfieldScreensaver";
 static LPCWSTR REG_STARS = L"StarCount";
 static LPCWSTR REG_SPEED = L"SpeedPercent";
 
@@ -29,7 +29,7 @@ static COLORREF g_color = RGB(255, 255, 255);
 // Logging helper
 static void log(const char* s) {
     CreateDirectoryW(L"C:\\Temp", NULL);
-    std::ofstream f("C:\\Temp\\MyStarfield_log.txt", std::ios::app);
+    std::ofstream f("C:\\Temp\\Starfield_log.txt", std::ios::app);
     if (f) {
         SYSTEMTIME t; GetLocalTime(&t);
         f << t.wYear << "-" << t.wMonth << "-" << t.wDay << " "
@@ -293,10 +293,10 @@ static BOOL CALLBACK MonEnumProc(HMONITOR hMon, HDC, LPRECT, LPARAM) {
     rw->rc = r; std::random_device rd; rw->rng.seed(rd());
     static bool reg = false;
     if (!reg) {
-        WNDCLASSW wc = {}; wc.lpfnWndProc = FullWndProc; wc.hInstance = g_hInst; wc.lpszClassName = L"MyStarfieldFullClass"; wc.hCursor = LoadCursor(NULL, IDC_ARROW);
+        WNDCLASSW wc = {}; wc.lpfnWndProc = FullWndProc; wc.hInstance = g_hInst; wc.lpszClassName = L"StarfieldFullClass"; wc.hCursor = LoadCursor(NULL, IDC_ARROW);
         RegisterClassW(&wc); reg = true;
     }
-    HWND hwnd = CreateWindowExW(WS_EX_TOPMOST, L"MyStarfieldFullClass", L"MyStarfield", WS_POPUP | WS_VISIBLE,
+    HWND hwnd = CreateWindowExW(WS_EX_TOPMOST, L"StarfieldFullClass", L"Starfield", WS_POPUP | WS_VISIBLE,
         r.left, r.top, r.right - r.left, r.bottom - r.top, NULL, NULL, g_hInst, NULL);
     if (!hwnd) { delete rw; return TRUE; }
     rw->hwnd = hwnd; SetWindowLongPtrW(hwnd, GWLP_USERDATA, (LONG_PTR)rw); ShowWindow(hwnd, SW_SHOW);
@@ -332,7 +332,7 @@ static void RunFull() {
         delete rw;
     }
     g_windows.clear();
-    log("RunFull end (GDI)");
+    log("RunFull end");
 }
 
 // ---------------- Settings dialog programmatic UI ----------------
@@ -345,14 +345,8 @@ static void CreateSettingsControls(HWND dlg) {
     CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", NULL, WS_CHILD | WS_VISIBLE | ES_NUMBER | ES_LEFT, 100, 8, 80, 20, dlg, (HMENU)CID_EDIT_STARS, g_hInst, NULL);
     CreateWindowExW(0, L"STATIC", L"Speed (%) :", WS_CHILD | WS_VISIBLE, 10, 40, 80, 18, dlg, NULL, g_hInst, NULL);
     CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", NULL, WS_CHILD | WS_VISIBLE | ES_NUMBER | ES_LEFT, 100, 38, 80, 20, dlg, (HMENU)CID_EDIT_SPEED, g_hInst, NULL);
-    CreateWindowExW(0, L"STATIC", L"Color preset:", WS_CHILD | WS_VISIBLE, 10, 70, 80, 18, dlg, NULL, g_hInst, NULL);
-    HWND hCombo = CreateWindowExW(0, L"COMBOBOX", NULL, WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL, 100, 68, 140, 120, dlg, (HMENU)CID_COMBO_COLOR, g_hInst, NULL);
-    SendMessageW(hCombo, CB_ADDSTRING, 0, (LPARAM)L"Warm White");
-    SendMessageW(hCombo, CB_ADDSTRING, 0, (LPARAM)L"Cool White");
-    SendMessageW(hCombo, CB_ADDSTRING, 0, (LPARAM)L"Blue");
-    SendMessageW(hCombo, CB_ADDSTRING, 0, (LPARAM)L"Yellow");
-    CreateWindowExW(0, L"BUTTON", L"OK", WS_CHILD | WS_VISIBLE, 80, 100, 80, 26, dlg, (HMENU)CID_OK, g_hInst, NULL);
-    CreateWindowExW(0, L"BUTTON", L"Cancel", WS_CHILD | WS_VISIBLE, 180, 98, 80, 26, dlg, (HMENU)CID_CANCEL, g_hInst, NULL);
+    CreateWindowExW(0, L"BUTTON", L"OK", WS_CHILD | WS_VISIBLE, 80, 70, 80, 26, dlg, (HMENU)CID_OK, g_hInst, NULL);
+    CreateWindowExW(0, L"BUTTON", L"Cancel", WS_CHILD | WS_VISIBLE, 68, 98, 80, 26, dlg, (HMENU)CID_CANCEL, g_hInst, NULL);
 }
 
 // Settings window proc handles control actions and closes window
@@ -415,7 +409,7 @@ static void EnsureSettingsClassRegistered() {
     WNDCLASSW wc = {};
     wc.lpfnWndProc = SettingsWndProc;
     wc.hInstance = g_hInst;
-    wc.lpszClassName = L"MyStarfieldSettingsClass";
+    wc.lpszClassName = L"StarfieldSettingsClass";
     wc.hCursor = LoadCursor(NULL, IDC_ARROW);
     wc.hbrBackground = (HBRUSH)(COLOR_BTNFACE + 1);
     RegisterClassW(&wc);
@@ -428,7 +422,7 @@ static int ShowSettingsModalPopup() {
     int w = 360, h = 220;
     int sw = GetSystemMetrics(SM_CXSCREEN), sh = GetSystemMetrics(SM_CYSCREEN);
     int x = (sw - w) / 2, y = (sh - h) / 2;
-    HWND dlg = CreateWindowExW(WS_EX_DLGMODALFRAME, L"MyStarfieldSettingsClass", L"Starfield Settings",
+    HWND dlg = CreateWindowExW(WS_EX_DLGMODALFRAME, L"StarfieldSettingsClass", L"Starfield Settings",
         WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU, x, y, w, h,
         NULL, NULL, g_hInst, NULL);
     if (!dlg) { log("ShowSettingsModalPopup: CreateWindowEx failed"); return -1; }

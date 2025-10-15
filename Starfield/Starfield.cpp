@@ -24,7 +24,8 @@ static int g_speed = 60;
 
 static COLORREF g_color = RGB(255, 255, 255);
 
-// Logging helper
+// Logging helper 
+// TODO: add typdef DEBUG to all loggings
 static void log(const char* s) 
 {
     CreateDirectoryW(L"C:\\Temp", NULL);

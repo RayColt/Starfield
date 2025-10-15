@@ -85,7 +85,7 @@ static bool g_running = true;
 // Input filtering
 static LARGE_INTEGER g_perfFreq;
 static LARGE_INTEGER g_startCounter;
-static double g_inputDebounceSeconds = 2.5;
+static double g_inputDebounceSeconds = 0.75;
 static POINT g_startMouse = { 0,0 };
 static bool g_startMouseInit = false;
 static const int g_mouseMoveThreshold = 12; // pixels
@@ -96,15 +96,18 @@ static void ParseArgs(int argc, wchar_t** argv, wchar_t& modeOut, HWND& hwndOut)
     modeOut = 0; hwndOut = NULL;
     if (argc <= 1) return;
     std::wstring a1 = argv[1];
-    if (a1.size() >= 2 && (a1[0] == L'/' || a1[0] == L'-')) {
+    if (a1.size() >= 2 && (a1[0] == L'/' || a1[0] == L'-')) 
+    {
         wchar_t c = towlower(a1[1]);
         modeOut = c;
         size_t colon = a1.find(L':');
-        if (colon != std::wstring::npos) {
+        if (colon != std::wstring::npos) 
+        {
             std::wstring num = a1.substr(colon + 1);
             if (!num.empty()) hwndOut = (HWND)_wcstoui64(num.c_str(), nullptr, 0);
         }
-        else if (argc >= 3) {
+        else if (argc >= 3) 
+        {
             std::wstring a2 = argv[2];
             bool numeric = !a2.empty();
             for (wchar_t ch : a2) if (!iswdigit(ch)) { numeric = false; break; }

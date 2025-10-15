@@ -1,18 +1,21 @@
-// MyStarfield.cpp
-// Single-file screensaver with programmatic Settings dialog and GDI renderer (no D2D, no SFML)
-// Build as Windows GUI (/SUBSYSTEM:WINDOWS)
+// Starfield.cpp
+// Single-file screensaver with programmatic Settings dialog (no .rc required).
+// Direct2D preview and fullscreen; strict input filtering; programmatic modal settings dialog.
+// Link: d2d1.lib
 
 #include <windows.h>
+#include <d2d1.h>
 #include <string>
 #include <vector>
 #include <random>
 #include <fstream>
 #include <shellapi.h>
-#include <cmath>
-#include <algorithm>
 
-#pragma comment(lib, "user32.lib")
-#pragma comment(lib, "gdi32.lib")
+#pragma comment(lib, "d2d1.lib")
+template <typename T>
+T clamp(T val, T minVal, T maxVal) {
+    return (val < minVal) ? minVal : (val > maxVal) ? maxVal : val;
+}
 
 // ---- Config / registry keys
 static LPCWSTR REG_KEY = L"Software\\MyStarfieldScreensaver";
@@ -26,8 +29,12 @@ static LPCWSTR REG_COLOR_B = L"ColorB";
 // Defaults
 static int g_starCount = 600;
 static int g_speedPercent = 60;
-//static int g_twinklePercent = 30;
+static int g_twinklePercent = 30;
 static COLORREF g_color = RGB(255, 255, 240);
+static float g_starSizeMultiplier = 1.0f;
+static float g_starBase = 1.0f;   // base numerator
+static float g_starMin = 0.5f;
+static float g_starMax = 8.0f;
 
 // Logging helper
 static void log(const char* s) {
@@ -75,22 +82,19 @@ static void SaveSettings() {
     SetRegDWORD(REG_COLOR_B, (DWORD)GetBValue(g_color));
 }
 
-// ---- Starfield model
+// ---- Starfield rendering structures
 struct Star { float x, y, z, base, phase; };
-
-// RenderWindow (GDI backbuffer)
 struct RenderWindow {
     HWND hwnd = NULL;
-    HDC backHdc = NULL;
-    HBITMAP backBmp = NULL;
-    HBITMAP oldBackBmp = NULL;
-    RECT rc = {};
+    ID2D1Factory* factory = nullptr;
+    ID2D1HwndRenderTarget* rt = nullptr;
+    ID2D1SolidColorBrush* brush = nullptr;
     std::vector<Star> stars;
+    RECT rc = {};
     std::mt19937 rng;
     bool isPreview = false;
 };
 
-// Globals
 static HINSTANCE g_hInst = NULL;
 static std::vector<RenderWindow*> g_windows;
 static bool g_running = true;
@@ -124,54 +128,12 @@ static void ParseArgs(int argc, wchar_t** argv, wchar_t& modeOut, HWND& hwndOut)
         }
     }
 }
+// Forward declarations
+LRESULT CALLBACK FullWndProc(HWND, UINT, WPARAM, LPARAM);
+LRESULT CALLBACK PreviewProc(HWND, UINT, WPARAM, LPARAM);
+LRESULT CALLBACK SettingsWndProc(HWND, UINT, WPARAM, LPARAM);
 
-// ---- GDI backbuffer helpers
-static bool CreateBackbuffer(RenderWindow* rw) {
-    if (!rw || !rw->hwnd) return false;
-    HDC wnd = GetDC(rw->hwnd);
-    if (!wnd) return false;
-
-    // release existing
-    if (rw->backHdc) {
-        SelectObject(rw->backHdc, rw->oldBackBmp);
-        DeleteObject(rw->backBmp);
-        DeleteDC(rw->backHdc);
-        rw->backHdc = NULL; rw->backBmp = NULL; rw->oldBackBmp = NULL;
-    }
-
-    int w = max(1, rw->rc.right - rw->rc.left);
-    int h = max(1, rw->rc.bottom - rw->rc.top);
-    HDC mem = CreateCompatibleDC(wnd);
-    HBITMAP bmp = CreateCompatibleBitmap(wnd, w, h);
-    if (!mem || !bmp) {
-        if (mem) DeleteDC(mem);
-        ReleaseDC(rw->hwnd, wnd);
-        return false;
-    }
-    rw->oldBackBmp = (HBITMAP)SelectObject(mem, bmp);
-    rw->backHdc = mem;
-    rw->backBmp = bmp;
-
-    // init black background
-    HBRUSH b = (HBRUSH)GetStockObject(BLACK_BRUSH);
-    RECT rc = { 0,0,w,h };
-    FillRect(rw->backHdc, &rc, b);
-
-    ReleaseDC(rw->hwnd, wnd);
-    return true;
-}
-
-static void DestroyBackbuffer(RenderWindow* rw) {
-    if (!rw) return;
-    if (rw->backHdc) {
-        SelectObject(rw->backHdc, rw->oldBackBmp);
-        DeleteObject(rw->backBmp);
-        DeleteDC(rw->backHdc);
-        rw->backHdc = NULL; rw->backBmp = NULL; rw->oldBackBmp = NULL;
-    }
-}
-
-// ---- Star initialization
+// Direct2D helpers
 static void InitStars(RenderWindow* rw) {
     RECT r = rw->rc;
     int w = max(1, r.right - r.left), h = max(1, r.bottom - r.top);
@@ -184,40 +146,27 @@ static void InitStars(RenderWindow* rw) {
     std::uniform_real_distribution<float> uph(0.0f, 6.28318530718f);
     for (int i = 0; i < g_starCount; ++i) rw->stars.push_back({ ux(rw->rng), uy(rw->rng), uz(rw->rng), ub(rw->rng), uph(rw->rng) });
 }
-
-// ---- Rendering (GDI)
-static void RenderFrameGDI(RenderWindow* rw, float dt, float totalTime) {
-    if (!rw || !rw->backHdc) return;
-    int w = max(1, rw->rc.right - rw->rc.left);
-    int h = max(1, rw->rc.bottom - rw->rc.top);
-
-    // clear backbuffer to black
-    HBRUSH black = (HBRUSH)GetStockObject(BLACK_BRUSH);
-    RECT rcFill = { 0,0,w,h };
-    FillRect(rw->backHdc, &rcFill, black);
-
-    // prepare reusable objects
-    HPEN oldPen = (HPEN)SelectObject(rw->backHdc, GetStockObject(NULL_PEN));
-    HBRUSH curBrush = NULL;
-
-    int baseR = GetRValue(g_color);
-    int baseG = GetGValue(g_color);
-    int baseB = GetBValue(g_color);
+static HRESULT CreateRT(RenderWindow* rw) {
+    if (!rw->factory) return E_FAIL;
+    if (rw->rt) { rw->rt->Release(); rw->rt = nullptr; }
+    D2D1_SIZE_U size = D2D1::SizeU(rw->rc.right - rw->rc.left, rw->rc.bottom - rw->rc.top);
+    D2D1_HWND_RENDER_TARGET_PROPERTIES props = D2D1::HwndRenderTargetProperties(rw->hwnd, size);
+    return rw->factory->CreateHwndRenderTarget(D2D1::RenderTargetProperties(), props, &rw->rt);
+}
+static void RenderFrame(RenderWindow* rw, float dt, float totalTime) {
+    if (!rw->rt) return;
+    if (!rw->brush) rw->rt->CreateSolidColorBrush(D2D1::ColorF(1, 1, 1, 1), &rw->brush);
+    rw->rt->BeginDraw();
+    rw->rt->Clear(D2D1::ColorF(D2D1::ColorF::Black));
+    D2D1_SIZE_F size = rw->rt->GetSize();
+    float cx = size.width * 0.5f, cy = size.height * 0.5f;
     float speed = g_speedPercent / 100.0f;
     float twinkle = g_twinklePercent / 100.0f;
-    float cx = w * 0.5f, cy = h * 0.5f;
-
-    // for performance: allocate one halo brush per frame; we'll reuse for similar colors
-   // HBRUSH haloBrush = NULL;
-    HBRUSH coreBrush = NULL;
-    //COLORREF lastHaloCol = 0xFFFFFFFF;
-    //COLORREF lastCoreCol = 0xFFFFFFFF;
-
     for (auto& s : rw->stars) {
         s.z -= 0.5f * speed * dt;
         if (s.z <= 0.05f) {
-            std::uniform_real_distribution<float> ux(0.0f, (float)w);
-            std::uniform_real_distribution<float> uy(0.0f, (float)h);
+            std::uniform_real_distribution<float> ux(0.0f, size.width);
+            std::uniform_real_distribution<float> uy(0.0f, size.height);
             std::uniform_real_distribution<float> uz(0.5f, 1.0f);
             std::uniform_real_distribution<float> ub(0.6f, 1.0f);
             std::uniform_real_distribution<float> uph(0.0f, 6.28318530718f);
@@ -225,72 +174,39 @@ static void RenderFrameGDI(RenderWindow* rw, float dt, float totalTime) {
         }
         float px = (s.x - cx) / s.z + cx;
         float py = (s.y - cy) / s.z + cy;
-        float pszf = (2.5f / s.z);
-        if (pszf < 1.0f) pszf = 1.0f;
-        int psz = (int)ceil(pszf);
+        //float psz = 1.0f / s.z; if (psz < 1.0f) psz = 1.0f;
+        float psz = (g_starBase / s.z) * (0.6f + 0.8f * s.base) * g_starSizeMultiplier;
+        psz = clamp(psz, g_starMin, g_starMax);
+        FLOAT dpiX = 96.0f, dpiY = 96.0f;
+        rw->rt->GetDpi(&dpiX, &dpiY);
+        float dpiScale = dpiX / 96.0f;
+        psz *= dpiScale;
 
         float tw = s.base + (sinf(s.phase + (float)totalTime * 5.0f) * 0.5f + 0.5f) * twinkle;
-        int r = (int)std::fmin(255.0f, baseR * tw);
-        int g = (int)std::fmin(255.0f, baseG * tw);
-        int bcol = (int)std::fmin(255.0f, baseB * tw);
-/*
-        // halo color (darker, low-intensity)
-        COLORREF haloCol = RGB(r / 6, g / 6, bcol / 6);
-        COLORREF coreCol = RGB(r, g, bcol);
-
-        if (haloCol != lastHaloCol) {
-            if (haloBrush) DeleteObject(haloBrush);
-            haloBrush = CreateSolidBrush(haloCol);
-            lastHaloCol = haloCol;
-        }
-        if (coreCol != lastCoreCol) {
-            if (coreBrush) DeleteObject(coreBrush);
-            coreBrush = CreateSolidBrush(coreCol);
-            lastCoreCol = coreCol;
-        }
-
-        // draw halo (larger ellipse)
-        if (psz > 1) {
-            HBRUSH old = (HBRUSH)SelectObject(rw->backHdc, haloBrush);
-            Ellipse(rw->backHdc, (int)(px - psz * 3), (int)(py - psz * 3), (int)(px + psz * 3), (int)(py + psz * 3));
-            SelectObject(rw->backHdc, old);
-        }
-*/
-        // draw core
-        HBRUSH oldCore = (HBRUSH)SelectObject(rw->backHdc, coreBrush);
-        Ellipse(rw->backHdc, (int)(px - psz), (int)(py - psz), (int)(px + psz), (int)(py + psz));
-        SelectObject(rw->backHdc, oldCore);
+        float rr = GetRValue(g_color) / 255.0f * tw;
+        float gg = GetGValue(g_color) / 255.0f * tw;
+        float bb = GetBValue(g_color) / 255.0f * tw;
+        rw->brush->SetColor(D2D1::ColorF(rr, gg, bb, 1.0f));
+        D2D1_ELLIPSE ell = D2D1::Ellipse(D2D1::Point2F(px, py), psz, psz);
+        rw->rt->FillEllipse(ell, rw->brush);
     }
-
-    // cleanup brushes created
-//    if (haloBrush) { DeleteObject(haloBrush); haloBrush = NULL; }
-    if (coreBrush) { DeleteObject(coreBrush); coreBrush = NULL; }
-    SelectObject(rw->backHdc, oldPen);
-
-    // blit to screen
-    HDC wnd = GetDC(rw->hwnd);
-    BitBlt(wnd, 0, 0, w, h, rw->backHdc, 0, 0, SRCCOPY);
-    ReleaseDC(rw->hwnd, wnd);
+    HRESULT hr = rw->rt->EndDraw();
+    if (hr == D2DERR_RECREATE_TARGET) { if (rw->rt) { rw->rt->Release(); rw->rt = nullptr; } CreateRT(rw); }
 }
 
-// ---- Foreground check and window procs
+// Foreground check
 static bool ForegroundIsOurWindow() {
     HWND fg = GetForegroundWindow(); if (!fg) return false;
     DWORD fgPid = 0; GetWindowThreadProcessId(fg, &fgPid); return (fgPid == GetCurrentProcessId());
 }
 
-// Fullscreen window proc (uses input filtering)
+// Fullscreen window proc (uses strict input filtering)
 LRESULT CALLBACK FullWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     RenderWindow* rw = (RenderWindow*)GetWindowLongPtrW(hWnd, GWLP_USERDATA);
     switch (msg) {
     case WM_CREATE: g_startMouseInit = false; return 0;
     case WM_SIZE:
-        if (rw) {
-            GetClientRect(hWnd, &rw->rc);
-            DestroyBackbuffer(rw);
-            CreateBackbuffer(rw);
-            g_startMouseInit = false;
-        }
+        if (rw) { GetClientRect(hWnd, &rw->rc); if (rw->rt) { rw->rt->Release(); rw->rt = nullptr; } CreateRT(rw); g_startMouseInit = false; }
         return 0;
     case WM_KEYDOWN:
     case WM_LBUTTONDOWN:
@@ -326,13 +242,14 @@ LRESULT CALLBACK PreviewProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) 
     }
 }
 
-// Monitor enumeration -> create fullscreen windows
+// Enum monitors -> create fullscreen windows
 static BOOL CALLBACK MonEnumProc(HMONITOR hMon, HDC, LPRECT, LPARAM) {
     MONITORINFOEXW mi; mi.cbSize = sizeof(mi);
     if (!GetMonitorInfoW(hMon, &mi)) return TRUE;
     RECT r = mi.rcMonitor;
     RenderWindow* rw = new RenderWindow();
     rw->rc = r; std::random_device rd; rw->rng.seed(rd());
+    D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &rw->factory);
     static bool reg = false;
     if (!reg) {
         WNDCLASSW wc = {}; wc.lpfnWndProc = FullWndProc; wc.hInstance = g_hInst; wc.lpszClassName = L"MyStarfieldFullClass"; wc.hCursor = LoadCursor(NULL, IDC_ARROW);
@@ -340,19 +257,16 @@ static BOOL CALLBACK MonEnumProc(HMONITOR hMon, HDC, LPRECT, LPARAM) {
     }
     HWND hwnd = CreateWindowExW(WS_EX_TOPMOST, L"MyStarfieldFullClass", L"MyStarfield", WS_POPUP | WS_VISIBLE,
         r.left, r.top, r.right - r.left, r.bottom - r.top, NULL, NULL, g_hInst, NULL);
-    if (!hwnd) { delete rw; return TRUE; }
+    if (!hwnd) { if (rw->factory) rw->factory->Release(); delete rw; return TRUE; }
     rw->hwnd = hwnd; SetWindowLongPtrW(hwnd, GWLP_USERDATA, (LONG_PTR)rw); ShowWindow(hwnd, SW_SHOW);
-    GetClientRect(hwnd, &rw->rc);
-    if (!CreateBackbuffer(rw)) log("CreateBackbuffer failed");
-    InitStars(rw);
-    g_windows.push_back(rw);
-    log("Created fullscreen window (GDI)");
+    GetClientRect(hwnd, &rw->rc); CreateRT(rw); InitStars(rw); g_windows.push_back(rw);
+    log("Created fullscreen window for monitor");
     return TRUE;
 }
 
 // Run fullscreen
 static void RunFull() {
-    log("RunFull start (GDI)");
+    log("RunFull start");
     EnumDisplayMonitors(NULL, NULL, MonEnumProc, 0);
     QueryPerformanceFrequency(&g_perfFreq);
     QueryPerformanceCounter(&g_startCounter);
@@ -360,21 +274,23 @@ static void RunFull() {
     LARGE_INTEGER last; QueryPerformanceCounter(&last);
     double total = 0.0; MSG msg;
     while (g_running) {
-        while (PeekMessageW(&msg, NULL, 0, 0, PM_REMOVE)) { if (msg.message == WM_QUIT) { g_running = false; break; } TranslateMessage(&msg); DispatchMessageW(&msg); }
+        while (PeekMessageW(&msg, NULL, 0, 0, PM_REMOVE)) { if (msg.message == WM_QUIT) { g_running = false; break; } TranslateMessage(&msg); DispatchMessage(&msg); }
         LARGE_INTEGER now; QueryPerformanceCounter(&now);
         double dt = double(now.QuadPart - last.QuadPart) / double(g_perfFreq.QuadPart);
         last = now; total += dt;
-        for (auto rw : g_windows) RenderFrameGDI(rw, (float)dt, (float)total);
-        Sleep(8);
+        for (auto rw : g_windows) RenderFrame(rw, (float)dt, (float)total);
+        Sleep(1);
     }
-    log("RunFull exiting cleanup (GDI)");
+    log("RunFull exiting cleanup");
     for (auto rw : g_windows) {
-        DestroyBackbuffer(rw);
+        if (rw->brush) rw->brush->Release();
+        if (rw->rt) rw->rt->Release();
+        if (rw->factory) rw->factory->Release();
         if (rw->hwnd) DestroyWindow(rw->hwnd);
         delete rw;
     }
     g_windows.clear();
-    log("RunFull end (GDI)");
+    log("RunFull end");
 }
 
 // ---------------- Settings dialog programmatic UI ----------------
@@ -395,9 +311,9 @@ static void CreateSettingsControls(HWND dlg) {
     SendMessageW(hCombo, CB_ADDSTRING, 0, (LPARAM)L"Cool White");
     SendMessageW(hCombo, CB_ADDSTRING, 0, (LPARAM)L"Blue");
     SendMessageW(hCombo, CB_ADDSTRING, 0, (LPARAM)L"Yellow");
-    CreateWindowExW(0, L"STATIC", L"Preview:", WS_CHILD | WS_VISIBLE, 260, 10, 80, 18, dlg, NULL, g_hInst, NULL);
-    CreateWindowExW(WS_EX_CLIENTEDGE, L"STATIC", NULL, WS_CHILD | WS_VISIBLE | SS_OWNERDRAW, 260, 30, 80, 80, dlg, (HMENU)CID_PREVIEW, g_hInst, NULL);
-    CreateWindowExW(0, L"BUTTON", L"Pick color", WS_CHILD | WS_VISIBLE, 100, 130, 80, 24, dlg, (HMENU)CID_BUTTON_COLOR, g_hInst, NULL);
+    //CreateWindowExW(0, L"STATIC", L"Preview:", WS_CHILD | WS_VISIBLE, 260, 10, 80, 18, dlg, NULL, g_hInst, NULL);
+    //CreateWindowExW(WS_EX_CLIENTEDGE, L"STATIC", NULL, WS_CHILD | WS_VISIBLE | SS_OWNERDRAW, 260, 30, 80, 80, dlg, (HMENU)CID_PREVIEW, g_hInst, NULL);
+    //CreateWindowExW(0, L"BUTTON", L"Pick color", WS_CHILD | WS_VISIBLE, 100, 130, 80, 24, dlg, (HMENU)CID_BUTTON_COLOR, g_hInst, NULL);
     CreateWindowExW(0, L"BUTTON", L"OK", WS_CHILD | WS_VISIBLE, 80, 170, 80, 26, dlg, (HMENU)CID_OK, g_hInst, NULL);
     CreateWindowExW(0, L"BUTTON", L"Cancel", WS_CHILD | WS_VISIBLE, 180, 170, 80, 26, dlg, (HMENU)CID_CANCEL, g_hInst, NULL);
 }
@@ -424,11 +340,11 @@ LRESULT CALLBACK SettingsWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPar
         if (id == CID_OK) {
             BOOL ok;
             int stars = GetDlgItemInt(hWnd, CID_EDIT_STARS, &ok, FALSE); if (!ok) stars = g_starCount;
-            stars = std::fmax(10, std::fmin(5000, stars));
+            stars = max(10, min(5000, stars));
             int speed = GetDlgItemInt(hWnd, CID_EDIT_SPEED, &ok, FALSE); if (!ok) speed = g_speedPercent;
-            speed = std::fmax(10, std::fmin(300, speed));
+            speed = max(10, min(300, speed));
             int tw = GetDlgItemInt(hWnd, CID_EDIT_TWINKLE, &ok, FALSE); if (!ok) tw = g_twinklePercent;
-            tw = std::fmax(0, std::fmin(100, tw));
+            tw = max(0, min(100, tw));
             HWND hCombo = GetDlgItem(hWnd, CID_COMBO_COLOR);
             int sel = (int)SendMessageW(hCombo, CB_GETCURSEL, 0, 0);
             COLORREF col = g_color;
@@ -451,6 +367,7 @@ LRESULT CALLBACK SettingsWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPar
         break;
     }
     case WM_DESTROY:
+        // If used in modal loop, breaking GetMessage happens because window is gone; do not PostQuitMessage here.
         return 0;
     default:
         return DefWindowProcW(hWnd, msg, wParam, lParam);
@@ -498,7 +415,7 @@ static int ShowSettingsModalPopup() {
 // Simple preview runner
 static int RunPreview(HWND parent) {
     if (!IsWindow(parent)) return 0;
-    log("RunPreview start (GDI)");
+    log("RunPreview start");
     WNDCLASSW wc = {}; wc.lpfnWndProc = PreviewProc; wc.hInstance = g_hInst; wc.lpszClassName = L"MyStarPre";
     RegisterClassW(&wc);
     RECT pr; GetClientRect(parent, &pr);
@@ -508,7 +425,8 @@ static int RunPreview(HWND parent) {
     RenderWindow* rw = new RenderWindow();
     rw->hwnd = child; rw->isPreview = true; rw->rc = pr;
     std::random_device rd; rw->rng.seed(rd());
-    CreateBackbuffer(rw); InitStars(rw);
+    D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &rw->factory);
+    CreateRT(rw); InitStars(rw);
 
     QueryPerformanceFrequency(&g_perfFreq);
     LARGE_INTEGER last; QueryPerformanceCounter(&last);
@@ -516,20 +434,22 @@ static int RunPreview(HWND parent) {
     while (IsWindow(child)) {
         while (PeekMessageW(&msg, NULL, 0, 0, PM_REMOVE)) {
             if (msg.message == WM_QUIT) { DestroyWindow(child); break; }
-            TranslateMessage(&msg); DispatchMessageW(&msg);
+            TranslateMessage(&msg); DispatchMessage(&msg);
         }
         LARGE_INTEGER now; QueryPerformanceCounter(&now);
         double dt = double(now.QuadPart - last.QuadPart) / double(g_perfFreq.QuadPart);
         last = now; total += dt;
-        RenderFrameGDI(rw, (float)dt, (float)total);
+        RenderFrame(rw, (float)dt, (float)total);
         Sleep(15);
     }
 
-    DestroyBackbuffer(rw);
+    if (rw->brush) rw->brush->Release();
+    if (rw->rt) rw->rt->Release();
+    if (rw->factory) rw->factory->Release();
     DestroyWindow(child);
     UnregisterClassW(wc.lpszClassName, g_hInst);
     delete rw;
-    log("RunPreview end (GDI)");
+    log("RunPreview end");
     return 0;
 }
 
@@ -559,7 +479,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int) {
             log("wWinMain: entering preview with provided parent");
             RunPreview(argH);
             log("wWinMain: preview returned");
-            LocalFree(argv); return 0;
+            LocalFree(argv);
+            return 0;
         }
         else {
             log("wWinMain: preview requested but no HWND; falling back to fullscreen");
@@ -567,8 +488,9 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int) {
     }
 
     // Default: fullscreen
-    log("wWinMain: entering fullscreen screensaver (GDI)");
+    log("wWinMain: entering fullscreen screensaver");
     g_running = true;
+    // Enumerate monitors and run full-screen animation
     RunFull();
     log("wWinMain: fullscreen screensaver finished");
     LocalFree(argv);

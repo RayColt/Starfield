@@ -18,7 +18,6 @@
 static LPCWSTR REG_KEY = L"Software\\MyStarfieldScreensaver";
 static LPCWSTR REG_STARS = L"StarCount";
 static LPCWSTR REG_SPEED = L"SpeedPercent";
-static LPCWSTR REG_TWINKLE = L"TwinklePercent";
 static LPCWSTR REG_COLOR_R = L"ColorR";
 static LPCWSTR REG_COLOR_G = L"ColorG";
 static LPCWSTR REG_COLOR_B = L"ColorB";
@@ -60,7 +59,6 @@ static void SetRegDWORD(LPCWSTR name, DWORD v) {
 static void LoadSettings() {
     g_starCount = GetRegDWORD(REG_STARS, g_starCount);
     g_speedPercent = GetRegDWORD(REG_SPEED, g_speedPercent);
-    g_twinklePercent = GetRegDWORD(REG_TWINKLE, g_twinklePercent);
     int r = GetRegDWORD(REG_COLOR_R, GetRValue(g_color));
     int g = GetRegDWORD(REG_COLOR_G, GetGValue(g_color));
     int b = GetRegDWORD(REG_COLOR_B, GetBValue(g_color));
@@ -69,7 +67,6 @@ static void LoadSettings() {
 static void SaveSettings() {
     SetRegDWORD(REG_STARS, (DWORD)g_starCount);
     SetRegDWORD(REG_SPEED, (DWORD)g_speedPercent);
-    SetRegDWORD(REG_TWINKLE, (DWORD)g_twinklePercent);
     SetRegDWORD(REG_COLOR_R, (DWORD)GetRValue(g_color));
     SetRegDWORD(REG_COLOR_G, (DWORD)GetGValue(g_color));
     SetRegDWORD(REG_COLOR_B, (DWORD)GetBValue(g_color));
@@ -204,14 +201,12 @@ static void RenderFrameGDI(RenderWindow* rw, float dt, float totalTime) {
     int baseG = GetGValue(g_color);
     int baseB = GetBValue(g_color);
     float speed = g_speedPercent / 100.0f;
-    float twinkle = g_twinklePercent / 100.0f;
     float cx = w * 0.5f, cy = h * 0.5f;
 
     // for performance: allocate one halo brush per frame; we'll reuse for similar colors
-   // HBRUSH haloBrush = NULL;
-    HBRUSH coreBrush = NULL;
-    //COLORREF lastHaloCol = 0xFFFFFFFF;
-    //COLORREF lastCoreCol = 0xFFFFFFFF;
+
+   HBRUSH coreBrush = NULL;
+
 
     for (auto& s : rw->stars) {
         s.z -= 0.5f * speed * dt;
@@ -225,37 +220,15 @@ static void RenderFrameGDI(RenderWindow* rw, float dt, float totalTime) {
         }
         float px = (s.x - cx) / s.z + cx;
         float py = (s.y - cy) / s.z + cy;
-        float pszf = (2.5f / s.z);
+        float pszf = (1.0f / s.z);
         if (pszf < 1.0f) pszf = 1.0f;
         int psz = (int)ceil(pszf);
 
-        float tw = s.base + (sinf(s.phase + (float)totalTime * 5.0f) * 0.5f + 0.5f) * twinkle;
+        float tw = s.base + (sinf(s.phase + (float)totalTime * 5.0f) * 0.5f + 0.5f);
         int r = (int)std::fmin(255.0f, baseR * tw);
         int g = (int)std::fmin(255.0f, baseG * tw);
         int bcol = (int)std::fmin(255.0f, baseB * tw);
-/*
-        // halo color (darker, low-intensity)
-        COLORREF haloCol = RGB(r / 6, g / 6, bcol / 6);
-        COLORREF coreCol = RGB(r, g, bcol);
 
-        if (haloCol != lastHaloCol) {
-            if (haloBrush) DeleteObject(haloBrush);
-            haloBrush = CreateSolidBrush(haloCol);
-            lastHaloCol = haloCol;
-        }
-        if (coreCol != lastCoreCol) {
-            if (coreBrush) DeleteObject(coreBrush);
-            coreBrush = CreateSolidBrush(coreCol);
-            lastCoreCol = coreCol;
-        }
-
-        // draw halo (larger ellipse)
-        if (psz > 1) {
-            HBRUSH old = (HBRUSH)SelectObject(rw->backHdc, haloBrush);
-            Ellipse(rw->backHdc, (int)(px - psz * 3), (int)(py - psz * 3), (int)(px + psz * 3), (int)(py + psz * 3));
-            SelectObject(rw->backHdc, old);
-        }
-*/
         // draw core
         HBRUSH oldCore = (HBRUSH)SelectObject(rw->backHdc, coreBrush);
         Ellipse(rw->backHdc, (int)(px - psz), (int)(py - psz), (int)(px + psz), (int)(py + psz));
@@ -263,7 +236,6 @@ static void RenderFrameGDI(RenderWindow* rw, float dt, float totalTime) {
     }
 
     // cleanup brushes created
-//    if (haloBrush) { DeleteObject(haloBrush); haloBrush = NULL; }
     if (coreBrush) { DeleteObject(coreBrush); coreBrush = NULL; }
     SelectObject(rw->backHdc, oldPen);
 
@@ -409,7 +381,6 @@ LRESULT CALLBACK SettingsWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPar
         CreateSettingsControls(hWnd);
         SetDlgItemInt(hWnd, CID_EDIT_STARS, g_starCount, FALSE);
         SetDlgItemInt(hWnd, CID_EDIT_SPEED, g_speedPercent, FALSE);
-        SetDlgItemInt(hWnd, CID_EDIT_TWINKLE, g_twinklePercent, FALSE);
         HWND hCombo = GetDlgItem(hWnd, CID_COMBO_COLOR);
         int sel = 0;
         if (g_color == RGB(255, 255, 240)) sel = 0;
@@ -427,13 +398,11 @@ LRESULT CALLBACK SettingsWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPar
             stars = std::fmax(10, std::fmin(5000, stars));
             int speed = GetDlgItemInt(hWnd, CID_EDIT_SPEED, &ok, FALSE); if (!ok) speed = g_speedPercent;
             speed = std::fmax(10, std::fmin(300, speed));
-            int tw = GetDlgItemInt(hWnd, CID_EDIT_TWINKLE, &ok, FALSE); if (!ok) tw = g_twinklePercent;
-            tw = std::fmax(0, std::fmin(100, tw));
             HWND hCombo = GetDlgItem(hWnd, CID_COMBO_COLOR);
             int sel = (int)SendMessageW(hCombo, CB_GETCURSEL, 0, 0);
             COLORREF col = g_color;
     switch (sel) { case 0: col = RGB(255, 255, 240); break; case 1: col = RGB(200, 200, 255); break; case 2: col = RGB(160, 180, 255); break; case 3: col = RGB(255, 240, 180); break; }
-                         g_starCount = stars; g_speedPercent = speed; g_twinklePercent = tw; g_color = col;
+                         g_starCount = stars; g_speedPercent = speed; g_color = col;
                          SaveSettings();
                          DestroyWindow(hWnd);
                          return 0;

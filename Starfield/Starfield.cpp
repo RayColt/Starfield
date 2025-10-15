@@ -1,6 +1,7 @@
-// MyStarfield.cpp
-// Single-file screensaver with programmatic Settings dialog and GDI renderer (no D2D, no SFML)
+// Starfield.cpp
+// Single-file screensaver with programmatic Settings dialog and GDI renderer
 // Build as Windows GUI (/SUBSYSTEM:WINDOWS)
+// Rename output .exe -> .scr to register with Windows Screensaver dialog.
 
 #include <windows.h>
 #include <string>

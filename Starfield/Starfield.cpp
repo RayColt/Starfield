@@ -171,7 +171,7 @@ static void InitStars(RenderWindow* rw) {
     for (int i = 0; i < g_starCount; ++i) rw->stars.push_back({ ux(rw->rng), uy(rw->rng), uz(rw->rng) });
 }
 
-// ---- Rendering (GDI)
+// ---- Rendering ()
 static void RenderFrame(RenderWindow* rw, float dt, float totalTime) {
     if (!rw || !rw->backHdc) return;
     int w = max(1, rw->rc.right - rw->rc.left);
@@ -304,13 +304,13 @@ static BOOL CALLBACK MonEnumProc(HMONITOR hMon, HDC, LPRECT, LPARAM) {
     if (!CreateBackbuffer(rw)) log("CreateBackbuffer failed");
     InitStars(rw);
     g_windows.push_back(rw);
-    log("Created fullscreen window (GDI)");
+    log("Created fullscreen window");
     return TRUE;
 }
 
 // Run fullscreen
 static void RunFull() {
-    log("RunFull start (GDI)");
+    log("RunFull start ()");
     EnumDisplayMonitors(NULL, NULL, MonEnumProc, 0);
     QueryPerformanceFrequency(&g_perfFreq);
     QueryPerformanceCounter(&g_startCounter);
@@ -325,7 +325,7 @@ static void RunFull() {
         for (auto rw : g_windows) RenderFrame(rw, (float)dt, (float)total);
         Sleep(8);
     }
-    log("RunFull exiting cleanup (GDI)");
+    log("RunFull exiting cleanup");
     for (auto rw : g_windows) {
         DestroyBackbuffer(rw);
         if (rw->hwnd) DestroyWindow(rw->hwnd);
@@ -346,7 +346,7 @@ static void CreateSettingsControls(HWND dlg) {
     CreateWindowExW(0, L"STATIC", L"Speed (%) :", WS_CHILD | WS_VISIBLE, 10, 40, 80, 18, dlg, NULL, g_hInst, NULL);
     CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", NULL, WS_CHILD | WS_VISIBLE | ES_NUMBER | ES_LEFT, 100, 38, 80, 20, dlg, (HMENU)CID_EDIT_SPEED, g_hInst, NULL);
     CreateWindowExW(0, L"BUTTON", L"OK", WS_CHILD | WS_VISIBLE, 80, 70, 80, 26, dlg, (HMENU)CID_OK, g_hInst, NULL);
-    CreateWindowExW(0, L"BUTTON", L"Cancel", WS_CHILD | WS_VISIBLE, 68, 98, 80, 26, dlg, (HMENU)CID_CANCEL, g_hInst, NULL);
+    CreateWindowExW(0, L"BUTTON", L"Cancel", WS_CHILD | WS_VISIBLE, 168, 70, 80, 26, dlg, (HMENU)CID_CANCEL, g_hInst, NULL);
 }
 
 // Settings window proc handles control actions and closes window
@@ -442,7 +442,7 @@ static int ShowSettingsModalPopup() {
 // Simple preview runner
 static int RunPreview(HWND parent) {
     if (!IsWindow(parent)) return 0;
-    log("RunPreview start (GDI)");
+    log("RunPreview start ()");
     WNDCLASSW wc = {}; wc.lpfnWndProc = PreviewProc; wc.hInstance = g_hInst; wc.lpszClassName = L"MyStarPre";
     RegisterClassW(&wc);
     RECT pr; GetClientRect(parent, &pr);
@@ -473,7 +473,7 @@ static int RunPreview(HWND parent) {
     DestroyWindow(child);
     UnregisterClassW(wc.lpszClassName, g_hInst);
     delete rw;
-    log("RunPreview end (GDI)");
+    log("RunPreview end");
     return 0;
 }
 

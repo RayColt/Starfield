@@ -1,2 +1,2 @@
 # Starfield
-An actual working c++ screensaver for Windows 11 & Visual Studio
+Actual, BUT IN DEVELOPMENT, 2 working c++ screensavers for Windows 11

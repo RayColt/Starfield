@@ -1,5 +1,4 @@
 // Starfield.cpp
-// Single-file screensaver with programmatic Settings dialog and GDI renderer
 // Build as Windows GUI (/SUBSYSTEM:WINDOWS)
 // Rename output .exe -> .scr to register with Windows Screensaver dialog.
 
@@ -12,22 +11,20 @@
 #include <cmath>
 #include <algorithm>
 
-#pragma comment(lib, "user32.lib")
-#pragma comment(lib, "gdi32.lib")
+//#pragma comment(lib, "user32.lib")
+//#pragma comment(lib, "32.lib")
+#pragma comment(lib, "comctl32.lib")
 
 // ---- Config / registry keys
 static LPCWSTR REG_KEY = L"Software\\MyStarfieldScreensaver";
 static LPCWSTR REG_STARS = L"StarCount";
 static LPCWSTR REG_SPEED = L"SpeedPercent";
-static LPCWSTR REG_COLOR_R = L"ColorR";
-static LPCWSTR REG_COLOR_G = L"ColorG";
-static LPCWSTR REG_COLOR_B = L"ColorB";
 
 // Defaults
 static int g_starCount = 600;
 static int g_speedPercent = 60;
-//static int g_twinklePercent = 30;
-static COLORREF g_color = RGB(255, 255, 240);
+
+static COLORREF g_color = RGB(255, 255, 255);
 
 // Logging helper
 static void log(const char* s) {
@@ -60,23 +57,16 @@ static void SetRegDWORD(LPCWSTR name, DWORD v) {
 static void LoadSettings() {
     g_starCount = GetRegDWORD(REG_STARS, g_starCount);
     g_speedPercent = GetRegDWORD(REG_SPEED, g_speedPercent);
-    int r = GetRegDWORD(REG_COLOR_R, GetRValue(g_color));
-    int g = GetRegDWORD(REG_COLOR_G, GetGValue(g_color));
-    int b = GetRegDWORD(REG_COLOR_B, GetBValue(g_color));
-    g_color = RGB(r, g, b);
 }
 static void SaveSettings() {
     SetRegDWORD(REG_STARS, (DWORD)g_starCount);
     SetRegDWORD(REG_SPEED, (DWORD)g_speedPercent);
-    SetRegDWORD(REG_COLOR_R, (DWORD)GetRValue(g_color));
-    SetRegDWORD(REG_COLOR_G, (DWORD)GetGValue(g_color));
-    SetRegDWORD(REG_COLOR_B, (DWORD)GetBValue(g_color));
 }
 
 // ---- Starfield model
 struct Star { float x, y, z; };
 
-// RenderWindow (GDI backbuffer)
+// RenderWindow
 struct RenderWindow {
     HWND hwnd = NULL;
     HDC backHdc = NULL;
@@ -123,7 +113,7 @@ static void ParseArgs(int argc, wchar_t** argv, wchar_t& modeOut, HWND& hwndOut)
     }
 }
 
-// ---- GDI backbuffer helpers
+// ---- backbuffer helpers
 static bool CreateBackbuffer(RenderWindow* rw) {
     if (!rw || !rw->hwnd) return false;
     HDC wnd = GetDC(rw->hwnd);
@@ -182,7 +172,7 @@ static void InitStars(RenderWindow* rw) {
 }
 
 // ---- Rendering (GDI)
-static void RenderFrameGDI(RenderWindow* rw, float dt, float totalTime) {
+static void RenderFrame(RenderWindow* rw, float dt, float totalTime) {
     if (!rw || !rw->backHdc) return;
     int w = max(1, rw->rc.right - rw->rc.left);
     int h = max(1, rw->rc.bottom - rw->rc.top);
@@ -194,7 +184,6 @@ static void RenderFrameGDI(RenderWindow* rw, float dt, float totalTime) {
 
     // prepare reusable objects
     HPEN oldPen = (HPEN)SelectObject(rw->backHdc, GetStockObject(NULL_PEN));
-    HBRUSH curBrush = NULL;
 
     int baseR = GetRValue(g_color);
     int baseG = GetGValue(g_color);
@@ -333,7 +322,7 @@ static void RunFull() {
         LARGE_INTEGER now; QueryPerformanceCounter(&now);
         double dt = double(now.QuadPart - last.QuadPart) / double(g_perfFreq.QuadPart);
         last = now; total += dt;
-        for (auto rw : g_windows) RenderFrameGDI(rw, (float)dt, (float)total);
+        for (auto rw : g_windows) RenderFrame(rw, (float)dt, (float)total);
         Sleep(8);
     }
     log("RunFull exiting cleanup (GDI)");
@@ -482,7 +471,7 @@ static int RunPreview(HWND parent) {
         LARGE_INTEGER now; QueryPerformanceCounter(&now);
         double dt = double(now.QuadPart - last.QuadPart) / double(g_perfFreq.QuadPart);
         last = now; total += dt;
-        RenderFrameGDI(rw, (float)dt, (float)total);
+        RenderFrame(rw, (float)dt, (float)total);
         Sleep(15);
     }
 
@@ -528,7 +517,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int) {
     }
 
     // Default: fullscreen
-    log("wWinMain: entering fullscreen screensaver (GDI)");
+    log("wWinMain: entering fullscreen screensaver");
     g_running = true;
     RunFull();
     log("wWinMain: fullscreen screensaver finished");

@@ -24,39 +24,53 @@ static int g_speed = 60;
 
 static COLORREF g_color = RGB(255, 255, 255);
 
+// Logging helper 
+static void log(const char* s) 
+{
+    CreateDirectoryW(L"C:\\Temp", NULL);
+    std::ofstream f("C:\\Temp\\Starfield_log.txt", std::ios::app);
+    if (f) 
+    {
+        SYSTEMTIME t; GetLocalTime(&t);
+        f << t.wYear << "-" << t.wMonth << "-" << t.wDay << " "
+            << t.wHour << ":" << t.wMinute << ":" << t.wSecond
+            << " pid=" << GetCurrentProcessId() << " : " << s << "\n";
+    }
+}
+
 // Registry helpers
-static int GetRegDWORD(LPCWSTR name, int def)
+static int GetRegDWORD(LPCWSTR name, int def) 
 {
     HKEY hKey; DWORD val = def; DWORD size = sizeof(val);
-    if (RegOpenKeyExW(HKEY_CURRENT_USER, REG_KEY, 0, KEY_READ, &hKey) == ERROR_SUCCESS)
+    if (RegOpenKeyExW(HKEY_CURRENT_USER, REG_KEY, 0, KEY_READ, &hKey) == ERROR_SUCCESS) 
     {
         RegQueryValueExW(hKey, name, NULL, NULL, (LPBYTE)&val, &size);
         RegCloseKey(hKey);
     }
     return (int)val;
 }
-static void SetRegDWORD(LPCWSTR name, DWORD v)
+static void SetRegDWORD(LPCWSTR name, DWORD v) 
 {
     HKEY hKey;
-    if (RegCreateKeyExW(HKEY_CURRENT_USER, REG_KEY, 0, NULL, 0, KEY_WRITE, NULL, &hKey, NULL) == ERROR_SUCCESS)
+    if (RegCreateKeyExW(HKEY_CURRENT_USER, REG_KEY, 0, NULL, 0, KEY_WRITE, NULL, &hKey, NULL) == ERROR_SUCCESS) 
     {
         RegSetValueExW(hKey, name, 0, REG_DWORD, (const BYTE*)&v, sizeof(DWORD));
         RegCloseKey(hKey);
     }
 }
-static void LoadSettings()
+static void LoadSettings() 
 {
     g_starCount = GetRegDWORD(REG_STARS, g_starCount);
     g_speed = GetRegDWORD(REG_SPEED, g_speed);
 }
-static void SaveSettings()
+static void SaveSettings() 
 {
     SetRegDWORD(REG_STARS, (DWORD)g_starCount);
     SetRegDWORD(REG_SPEED, (DWORD)g_speed);
 }
 
 // Star model
-struct Star
+struct Star 
 {
     float x;     // world X (centered)
     float y;     // world Y (centered)
@@ -65,7 +79,7 @@ struct Star
 };
 
 // RenderWindow
-struct RenderWindow
+struct RenderWindow 
 {
     HWND hwnd = NULL;
     HDC backHdc = NULL;
@@ -91,7 +105,7 @@ static bool g_startMouseInit = false;
 static const int g_mouseMoveThreshold = 12; // pixels
 
 // Simple arg parsing
-static void ParseArgs(int argc, wchar_t** argv, wchar_t& modeOut, HWND& hwndOut)
+static void ParseArgs(int argc, wchar_t** argv, wchar_t& modeOut, HWND& hwndOut) 
 {
     modeOut = 0; hwndOut = NULL;
     if (argc <= 1) return;
@@ -114,14 +128,14 @@ static void ParseArgs(int argc, wchar_t** argv, wchar_t& modeOut, HWND& hwndOut)
 }
 
 // ---- backbuffer helpers
-static bool CreateBackbuffer(RenderWindow* rw)
+static bool CreateBackbuffer(RenderWindow* rw) 
 {
     if (!rw || !rw->hwnd) return false;
     HDC wnd = GetDC(rw->hwnd);
     if (!wnd) return false;
 
     // release existing
-    if (rw->backHdc)
+    if (rw->backHdc) 
     {
         SelectObject(rw->backHdc, rw->oldBackBmp);
         DeleteObject(rw->backBmp);
@@ -151,10 +165,10 @@ static bool CreateBackbuffer(RenderWindow* rw)
     return true;
 }
 
-static void DestroyBackbuffer(RenderWindow* rw)
+static void DestroyBackbuffer(RenderWindow* rw) 
 {
     if (!rw) return;
-    if (rw->backHdc)
+    if (rw->backHdc) 
     {
         SelectObject(rw->backHdc, rw->oldBackBmp);
         DeleteObject(rw->backBmp);
@@ -163,15 +177,14 @@ static void DestroyBackbuffer(RenderWindow* rw)
     }
 }
 
-
 // Helper frand [0,1)
-static inline float frand_mt(std::mt19937& rng)
+static inline float frand_mt(std::mt19937& rng) 
 {
     return (rng() & 0x7FFFFFFF) / 2147483648.0f;
 }
 
 
-static inline std::string vprint(float v, int precision = 4)
+static inline std::string vprint(float v, int precision = 4) 
 {
     char buf[128];
     int n = sprintf_s(buf, sizeof(buf), "%.*g", precision, v);
@@ -189,7 +202,7 @@ static const float FOCAL = 9.0f;
 // multiplier that controls drawn core size; increase for larger stars
 static const float SIZE_SCALE = 1.0f;
 
-static void InitStars(RenderWindow* rw)
+static void InitStars(RenderWindow* rw) 
 {
     if (!rw) return;
     RECT r = rw->rc;
@@ -202,7 +215,7 @@ static void InitStars(RenderWindow* rw)
     int jitterMax = max(1, g_speed / 2 + 1);
     std::uniform_real_distribution<float> ud01(0.0f, 1.0f);
 
-    for (int i = 0; i < g_starCount; ++i)
+    for (int i = 0; i < g_starCount; ++i) 
     {
         float fx = ud01(rw->rng);
         float fy = ud01(rw->rng);
@@ -218,7 +231,7 @@ static void InitStars(RenderWindow* rw)
 }
 
 // RenderFrame tuned to the sample values (uses totalTime)
-static void RenderFrame(RenderWindow* rw, float dt, float totalTime)
+static void RenderFrame(RenderWindow* rw, float dt, float totalTime) 
 {
     if (!rw || !rw->backHdc) return;
     int w = max(1, rw->rc.right - rw->rc.left);
@@ -239,7 +252,7 @@ static void RenderFrame(RenderWindow* rw, float dt, float totalTime)
     const int BUCKETS = 6;
     HBRUSH brushes[BUCKETS] = { 0 };
 
-    for (auto& s : rw->stars)
+    for (auto& s : rw->stars) 
     {
         // advance depth
         s.z -= s.speed * dt * 0.5f;
@@ -309,7 +322,7 @@ static void RenderFrame(RenderWindow* rw, float dt, float totalTime)
 
 
 // ---- Foreground check and window procs
-static bool ForegroundIsOurWindow()
+static bool ForegroundIsOurWindow() 
 {
     HWND fg = GetForegroundWindow(); if (!fg) return false;
     DWORD fgPid = 0; GetWindowThreadProcessId(fg, &fgPid); return (fgPid == GetCurrentProcessId());
@@ -318,11 +331,11 @@ static bool ForegroundIsOurWindow()
 // Fullscreen window proc (uses input filtering)
 LRESULT CALLBACK FullWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     RenderWindow* rw = (RenderWindow*)GetWindowLongPtrW(hWnd, GWLP_USERDATA);
-    switch (msg)
+    switch (msg) 
     {
     case WM_CREATE: g_startMouseInit = false; return 0;
     case WM_SIZE:
-        if (rw)
+        if (rw) 
         {
             GetClientRect(hWnd, &rw->rc);
             DestroyBackbuffer(rw);
@@ -335,23 +348,59 @@ LRESULT CALLBACK FullWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) 
     case WM_RBUTTONDOWN:
     case WM_MBUTTONDOWN:
     case WM_XBUTTONDOWN:
-    case WM_MOUSEMOVE:
+    case WM_MOUSEMOVE: 
     {
         LARGE_INTEGER now; QueryPerformanceCounter(&now);
         double seconds = double(now.QuadPart - g_startCounter.QuadPart) / double(g_perfFreq.QuadPart);
-        if (seconds < g_inputDebounceSeconds) { return 0; }
-        if (!ForegroundIsOurWindow()) { return 0; }
-        if (msg == WM_MOUSEMOVE)
+        if (seconds < g_inputDebounceSeconds) 
+        { 
+ #if defined(_DEBUG) || defined(DEBUG)           
+            log("Ignored input during debounce"); 
+ #endif       
+            return 0; 
+        }
+        if (!ForegroundIsOurWindow()) 
+        { 
+#if defined(_DEBUG) || defined(DEBUG)           
+            log("Ignored input because foreground window is not ours"); 
+ #endif 
+            return 0;  
+        }
+        if (msg == WM_MOUSEMOVE) 
         {
             POINT cur; GetCursorPos(&cur);
-            if (!g_startMouseInit) { g_startMouse = cur; g_startMouseInit = true; return 0; }
+            if (!g_startMouseInit) 
+            { 
+                g_startMouse = cur; 
+                g_startMouseInit = true;
+#if defined(_DEBUG) || defined(DEBUG)
+                log("initialized start mouse pos");
+#endif
+                return 0; 
+            }
             int dx = abs(cur.x - g_startMouse.x), dy = abs(cur.y - g_startMouse.y);
-            if (dx < g_mouseMoveThreshold && dy < g_mouseMoveThreshold) { return 0; }
+            if (dx < g_mouseMoveThreshold && dy < g_mouseMoveThreshold) 
+            { 
+#if defined(_DEBUG) || defined(DEBUG)
+                log("Ignored small mouse jitter"); 
+#endif         
+                return 0; 
+            }
         }
+#if defined(_DEBUG) || defined(DEBUG)
+        log("Input considered deliberate -> exiting");
+#endif
         g_running = false; PostQuitMessage(0);
         return 0;
     }
-    case WM_DESTROY: return 0;
+
+    case WM_DESTROY:
+    {
+#if defined(_DEBUG) || defined(DEBUG)        
+        log("WM_DESTROY fullscreen window");
+#endif
+        return 0;
+    }
     default: return DefWindowProcW(hWnd, msg, wParam, lParam);
     }
 }
@@ -366,7 +415,7 @@ LRESULT CALLBACK PreviewProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) 
 }
 
 // Monitor enumeration -> create fullscreen windows
-static BOOL CALLBACK MonEnumProc(HMONITOR hMon, HDC, LPRECT, LPARAM)
+static BOOL CALLBACK MonEnumProc(HMONITOR hMon, HDC, LPRECT, LPARAM) 
 {
     MONITORINFOEXW mi; mi.cbSize = sizeof(mi);
     if (!GetMonitorInfoW(hMon, &mi)) return TRUE;
@@ -374,7 +423,7 @@ static BOOL CALLBACK MonEnumProc(HMONITOR hMon, HDC, LPRECT, LPARAM)
     RenderWindow* rw = new RenderWindow();
     rw->rc = r; std::random_device rd; rw->rng.seed(rd());
     static bool reg = false;
-    if (!reg)
+    if (!reg) 
     {
         WNDCLASSW wc = {}; wc.lpfnWndProc = FullWndProc; wc.hInstance = g_hInst; wc.lpszClassName = L"StarfieldFullClass"; wc.hCursor = LoadCursor(NULL, IDC_ARROW);
         RegisterClassW(&wc); reg = true;
@@ -384,22 +433,30 @@ static BOOL CALLBACK MonEnumProc(HMONITOR hMon, HDC, LPRECT, LPARAM)
     if (!hwnd) { delete rw; return TRUE; }
     rw->hwnd = hwnd; SetWindowLongPtrW(hwnd, GWLP_USERDATA, (LONG_PTR)rw); ShowWindow(hwnd, SW_SHOW);
     GetClientRect(hwnd, &rw->rc);
-    CreateBackbuffer(rw);
+#if defined(_DEBUG) || defined(DEBUG)
+    if (!CreateBackbuffer(rw)) log("CreateBackbuffer failed");
+#endif
     InitStars(rw);
     g_windows.push_back(rw);
+#if defined(_DEBUG) || defined(DEBUG)
+    log("Created fullscreen window");
+#endif
     return TRUE;
 }
 
 // Run fullscreen
-static void RunFull()
+static void RunFull() 
 {
+#if defined(_DEBUG) || defined(DEBUG)
+    log("RunFull start ()");
+#endif
     EnumDisplayMonitors(NULL, NULL, MonEnumProc, 0);
     QueryPerformanceFrequency(&g_perfFreq);
     QueryPerformanceCounter(&g_startCounter);
     POINT p; GetCursorPos(&p); g_startMouse = p; g_startMouseInit = true;
     LARGE_INTEGER last; QueryPerformanceCounter(&last);
     double total = 0.0; MSG msg;
-    while (g_running)
+    while (g_running) 
     {
         while (PeekMessageW(&msg, NULL, 0, 0, PM_REMOVE)) { if (msg.message == WM_QUIT) { g_running = false; break; } TranslateMessage(&msg); DispatchMessageW(&msg); }
         LARGE_INTEGER now; QueryPerformanceCounter(&now);
@@ -408,13 +465,19 @@ static void RunFull()
         for (auto rw : g_windows) RenderFrame(rw, (float)dt, (float)total);
         Sleep(8);
     }
-    for (auto rw : g_windows)
+#if defined(_DEBUG) || defined(DEBUG)
+    log("RunFull exiting cleanup");
+#endif
+    for (auto rw : g_windows) 
     {
         DestroyBackbuffer(rw);
         if (rw->hwnd) DestroyWindow(rw->hwnd);
         delete rw;
     }
     g_windows.clear();
+#if defined(_DEBUG) || defined(DEBUG)
+    log("RunFull end");
+#endif
 }
 
 // ---------------- Settings dialog programmatic UI ----------------
@@ -422,7 +485,7 @@ static void RunFull()
 enum { CID_OK = 100, CID_CANCEL = 101, CID_EDIT_STARS = 110, CID_EDIT_SPEED = 111, CID_EDIT_TWINKLE = 112, CID_COMBO_COLOR = 113, CID_BUTTON_COLOR = 114, CID_PREVIEW = 115 };
 
 // Create child controls on given window
-static void CreateSettingsControls(HWND dlg)
+static void CreateSettingsControls(HWND dlg) 
 {
     CreateWindowExW(0, L"STATIC", L"Star count:", WS_CHILD | WS_VISIBLE, 10, 10, 80, 18, dlg, NULL, g_hInst, NULL);
     CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", NULL, WS_CHILD | WS_VISIBLE | ES_NUMBER | ES_LEFT, 100, 8, 80, 20, dlg, (HMENU)CID_EDIT_STARS, g_hInst, NULL);
@@ -433,11 +496,11 @@ static void CreateSettingsControls(HWND dlg)
 }
 
 // Settings window proc handles control actions and closes window
-LRESULT CALLBACK SettingsWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK SettingsWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) 
 {
-    switch (msg)
+    switch (msg) 
     {
-    case WM_CREATE:
+    case WM_CREATE: 
     {
         CreateSettingsControls(hWnd);
         SetDlgItemInt(hWnd, CID_EDIT_STARS, g_starCount, FALSE);
@@ -451,10 +514,10 @@ LRESULT CALLBACK SettingsWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPar
         SendMessageW(hCombo, CB_SETCURSEL, sel, 0);
         return 0;
     }
-    case WM_COMMAND:
+    case WM_COMMAND: 
     {
         int id = LOWORD(wParam);
-        if (id == CID_OK)
+        if (id == CID_OK) 
         {
             BOOL ok;
             int stars = GetDlgItemInt(hWnd, CID_EDIT_STARS, &ok, FALSE); if (!ok) stars = g_starCount;
@@ -464,21 +527,20 @@ LRESULT CALLBACK SettingsWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPar
             HWND hCombo = GetDlgItem(hWnd, CID_COMBO_COLOR);
             int sel = (int)SendMessageW(hCombo, CB_GETCURSEL, 0, 0);
             COLORREF col = g_color;
-            switch (sel)
-            {
-            case 0: col = RGB(255, 255, 240); break; case 1: col = RGB(200, 200, 255); break; case 2: col = RGB(160, 180, 255); break; case 3: col = RGB(255, 240, 180); break;
+            switch (sel) 
+            { 
+                case 0: col = RGB(255, 255, 240); break; case 1: col = RGB(200, 200, 255); break; case 2: col = RGB(160, 180, 255); break; case 3: col = RGB(255, 240, 180); break; }
+                g_starCount = stars; g_speed = speed; g_color = col;
+                SaveSettings();
+                DestroyWindow(hWnd);
+                return 0;
             }
-            g_starCount = stars; g_speed = speed; g_color = col;
-            SaveSettings();
-            DestroyWindow(hWnd);
-            return 0;
-        }
-        else if (id == CID_CANCEL)
+        else if (id == CID_CANCEL) 
         {
             DestroyWindow(hWnd);
             return 0;
         }
-        else if (id == CID_BUTTON_COLOR)
+        else if (id == CID_BUTTON_COLOR) 
         {
             CHOOSECOLORW cc = {}; static COLORREF cust[16];
             cc.lStructSize = sizeof(cc); cc.hwndOwner = hWnd; cc.lpCustColors = cust; cc.rgbResult = g_color; cc.Flags = CC_FULLOPEN | CC_RGBINIT;
@@ -496,7 +558,7 @@ LRESULT CALLBACK SettingsWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPar
 }
 
 // Register settings class once
-static void EnsureSettingsClassRegistered()
+static void EnsureSettingsClassRegistered() 
 {
     static bool reg = false;
     if (reg) return;
@@ -511,7 +573,7 @@ static void EnsureSettingsClassRegistered()
 }
 
 // Show modal popup (centered) and block until closed
-static int ShowSettingsModalPopup()
+static int ShowSettingsModalPopup() 
 {
     EnsureSettingsClassRegistered();
     int w = 360, h = 220;
@@ -520,30 +582,49 @@ static int ShowSettingsModalPopup()
     HWND dlg = CreateWindowExW(WS_EX_DLGMODALFRAME, L"StarfieldSettingsClass", L"Starfield Settings",
         WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU, x, y, w, h,
         NULL, NULL, g_hInst, NULL);
-    if (!dlg) { return -1; }
+
+    if (!dlg) 
+    { 
+#if defined(_DEBUG) || defined(DEBUG)
+        log("ShowSettingsModalPopup: CreateWindowEx failed"); 
+#endif
+        return -1; 
+    }
+
     ShowWindow(dlg, SW_SHOW);
     UpdateWindow(dlg);
 
     // Modal message loop: run until dlg destroyed
     MSG msg;
-    while (IsWindow(dlg) && GetMessageW(&msg, NULL, 0, 0))
+    while (IsWindow(dlg) && GetMessageW(&msg, NULL, 0, 0)) 
     {
         TranslateMessage(&msg);
         DispatchMessageW(&msg);
     }
+#if defined(_DEBUG) || defined(DEBUG)
+    log("ShowSettingsModalPopup: dialog closed");
+#endif
     return 0;
 }
 
 // Simple preview runner
-static int RunPreview(HWND parent)
+static int RunPreview(HWND parent) 
 {
     if (!IsWindow(parent)) return 0;
+#if defined(_DEBUG) || defined(DEBUG)
+    log("RunPreview start ()");
+#endif
     WNDCLASSW wc = {}; wc.lpfnWndProc = PreviewProc; wc.hInstance = g_hInst; wc.lpszClassName = L"MyStarPre";
     RegisterClassW(&wc);
     RECT pr; GetClientRect(parent, &pr);
     HWND child = CreateWindowExW(0, wc.lpszClassName, L"", WS_CHILD | WS_VISIBLE, 0, 0, pr.right - pr.left, pr.bottom - pr.top, parent, NULL, g_hInst, NULL);
-    if (!child) { UnregisterClassW(wc.lpszClassName, g_hInst); return 0; }
-
+    if (!child) 
+    { 
+        UnregisterClassW(wc.lpszClassName, g_hInst); 
+#if defined(_DEBUG) || defined(DEBUG)
+        log("RunPreview: failed to create child"); return 0; 
+#endif
+    }
     RenderWindow* rw = new RenderWindow();
     rw->hwnd = child; rw->isPreview = true; rw->rc = pr;
     std::random_device rd; rw->rng.seed(rd());
@@ -553,7 +634,7 @@ static int RunPreview(HWND parent)
     LARGE_INTEGER last; QueryPerformanceCounter(&last);
     double total = 0.0; MSG msg;
     while (IsWindow(child)) {
-        while (PeekMessageW(&msg, NULL, 0, 0, PM_REMOVE))
+        while (PeekMessageW(&msg, NULL, 0, 0, PM_REMOVE)) 
         {
             if (msg.message == WM_QUIT) { DestroyWindow(child); break; }
             TranslateMessage(&msg); DispatchMessageW(&msg);
@@ -569,6 +650,9 @@ static int RunPreview(HWND parent)
     DestroyWindow(child);
     UnregisterClassW(wc.lpszClassName, g_hInst);
     delete rw;
+#if defined(_DEBUG) || defined(DEBUG)
+    log("RunPreview end");
+#endif
     return 0;
 }
 
@@ -576,33 +660,65 @@ static int RunPreview(HWND parent)
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int) {
     g_hInst = hInstance;
     LoadSettings();
-
     // log path for verification
     wchar_t modPath[MAX_PATH] = {};
     GetModuleFileNameW(NULL, modPath, MAX_PATH);
-    char pathLog[512]; sprintf_s(pathLog, "Running from: %ws", modPath);
-
+    char pathLog[512]; sprintf_s(pathLog, "Running from: %ws", modPath); 
+#if defined(_DEBUG) || defined(DEBUG)
+    log(pathLog);
+#endif
     int argc = 0; wchar_t** argv = CommandLineToArgvW(GetCommandLineW(), &argc);
     wchar_t mode = 0; HWND argH = NULL; ParseArgs(argc, argv, mode, argH);
-    { char buf[256]; sprintf_s(buf, "Parsed args mode=%c hwnd=%p", mode ? (char)mode : '0', argH); }
+    { 
+        char buf[256]; 
+        sprintf_s(buf, "Parsed args mode=%c hwnd=%p", mode ? (char)mode : '0', argH); 
+#if defined(_DEBUG) || defined(DEBUG)
+        log(buf); 
+#endif    
+    }
 
-    if (mode == 'c')
+    if (mode == 'c') 
     {
+#if defined(_DEBUG) || defined(DEBUG)
+        log("wWinMain: entering settings (modal popup forced)");
+#endif
         ShowSettingsModalPopup();
+#if defined(_DEBUG) || defined(DEBUG)
+        log("wWinMain: settings branch finished");
+#endif
         LocalFree(argv); return 0;
     }
 
-    if (mode == 'p')
+    if (mode == 'p') 
     {
-        if (argH)
+        if (argH) 
         {
+#if defined(_DEBUG) || defined(DEBUG)
+            log("wWinMain: entering preview with provided parent");
+#endif
             RunPreview(argH);
+#if defined(_DEBUG) || defined(DEBUG)
+            log("wWinMain: preview returned");
+#endif
             LocalFree(argv); return 0;
         }
+        else 
+        {
+#if defined(_DEBUG) || defined(DEBUG)
+            log("wWinMain: preview requested but no HWND; falling back to fullscreen");
+#endif
+        }
     }
+
     // Default: fullscreen
+#if defined(_DEBUG) || defined(DEBUG)
+    log("wWinMain: entering fullscreen screensaver");
+#endif
     g_running = true;
     RunFull();
+#if defined(_DEBUG) || defined(DEBUG)
+    log("wWinMain: fullscreen screensaver finished");
+#endif
     LocalFree(argv);
     return 0;
 }

@@ -1,6 +1,6 @@
 // MyStarfield.cpp
 // Single-file screensaver with programmatic Settings dialog (no .rc required).
-// Direct2D preview and fullscreen; strict input filtering; programmatic modal settings dialog.
+// Direct2D preview and fullscreen; strict input filtering; programmatic dialog.
 // Link: d2d1.lib
 
 #include <windows.h>
@@ -28,7 +28,7 @@ static int g_speedPercent = 60;
 static int g_twinklePercent = 30;
 static COLORREF g_color = RGB(255, 255, 240);
 
-// Logging helper
+// Logging
 static void log(const char* s) {
     CreateDirectoryW(L"C:\\Temp", NULL);
     std::ofstream f("C:\\Temp\\MyStarfield_log.txt", std::ios::app);
@@ -124,7 +124,6 @@ static void ParseArgs(int argc, wchar_t** argv, wchar_t& modeOut, HWND& hwndOut)
 // Forward declarations
 LRESULT CALLBACK FullWndProc(HWND, UINT, WPARAM, LPARAM);
 LRESULT CALLBACK PreviewProc(HWND, UINT, WPARAM, LPARAM);
-LRESULT CALLBACK SettingsWndProc(HWND, UINT, WPARAM, LPARAM);
 
 // Direct2D helpers
 static void InitStars(RenderWindow* rw) {
@@ -228,7 +227,7 @@ LRESULT CALLBACK PreviewProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) 
     }
 }
 
-// Enum monitors -> create fullscreen windows
+// Monitor enumeration -> create fullscreen windows
 static BOOL CALLBACK MonEnumProc(HMONITOR hMon, HDC, LPRECT, LPARAM) {
     MONITORINFOEXW mi; mi.cbSize = sizeof(mi);
     if (!GetMonitorInfoW(hMon, &mi)) return TRUE;
@@ -279,18 +278,24 @@ static void RunFull() {
     log("RunFull end");
 }
 
-// ---------------- Settings dialog programmatic UI ----------------
-// IDs
+// Programmatic Settings dialog construction helpers
 enum { CID_OK = 100, CID_CANCEL = 101, CID_EDIT_STARS = 110, CID_EDIT_SPEED = 111, CID_EDIT_TWINKLE = 112, CID_COMBO_COLOR = 113, CID_BUTTON_COLOR = 114, CID_PREVIEW = 115 };
 
-// Create child controls on given window
-static void CreateSettingsControls(HWND dlg) {
+static HWND CreateSettingsDialog(HWND parent, bool asChild) {
+    // create top-level or child window as container
+    DWORD style = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_VISIBLE;
+    DWORD ex = WS_EX_DLGMODALFRAME;
+    HWND hwndOwner = asChild ? parent : NULL;
+    HWND dlg = CreateWindowExW(ex, L"STATIC", L"SettingsContainer", asChild ? (WS_CHILD | WS_VISIBLE) : style, CW_USEDEFAULT, CW_USEDEFAULT, 360, 220, hwndOwner, NULL, g_hInst, NULL);
+    if (!dlg) { log("CreateSettingsDialog: failed to create container"); return NULL; }
+
+    // child controls: use CreateWindowEx for standard controls
     CreateWindowExW(0, L"STATIC", L"Star count:", WS_CHILD | WS_VISIBLE, 10, 10, 80, 18, dlg, NULL, g_hInst, NULL);
-    CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", NULL, WS_CHILD | WS_VISIBLE | ES_NUMBER | ES_LEFT, 100, 8, 80, 20, dlg, (HMENU)CID_EDIT_STARS, g_hInst, NULL);
+    HWND heStars = CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", NULL, WS_CHILD | WS_VISIBLE | ES_NUMBER | ES_LEFT, 100, 8, 80, 20, dlg, (HMENU)CID_EDIT_STARS, g_hInst, NULL);
     CreateWindowExW(0, L"STATIC", L"Speed (%) :", WS_CHILD | WS_VISIBLE, 10, 40, 80, 18, dlg, NULL, g_hInst, NULL);
-    CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", NULL, WS_CHILD | WS_VISIBLE | ES_NUMBER | ES_LEFT, 100, 38, 80, 20, dlg, (HMENU)CID_EDIT_SPEED, g_hInst, NULL);
+    HWND heSpeed = CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", NULL, WS_CHILD | WS_VISIBLE | ES_NUMBER | ES_LEFT, 100, 38, 80, 20, dlg, (HMENU)CID_EDIT_SPEED, g_hInst, NULL);
     CreateWindowExW(0, L"STATIC", L"Twinkle (%) :", WS_CHILD | WS_VISIBLE, 10, 70, 80, 18, dlg, NULL, g_hInst, NULL);
-    CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", NULL, WS_CHILD | WS_VISIBLE | ES_NUMBER | ES_LEFT, 100, 68, 80, 20, dlg, (HMENU)CID_EDIT_TWINKLE, g_hInst, NULL);
+    HWND heTw = CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", NULL, WS_CHILD | WS_VISIBLE | ES_NUMBER | ES_LEFT, 100, 68, 80, 20, dlg, (HMENU)CID_EDIT_TWINKLE, g_hInst, NULL);
     CreateWindowExW(0, L"STATIC", L"Color preset:", WS_CHILD | WS_VISIBLE, 10, 100, 80, 18, dlg, NULL, g_hInst, NULL);
     HWND hCombo = CreateWindowExW(0, L"COMBOBOX", NULL, WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL, 100, 98, 140, 120, dlg, (HMENU)CID_COMBO_COLOR, g_hInst, NULL);
     SendMessageW(hCombo, CB_ADDSTRING, 0, (LPARAM)L"Warm White");
@@ -298,103 +303,133 @@ static void CreateSettingsControls(HWND dlg) {
     SendMessageW(hCombo, CB_ADDSTRING, 0, (LPARAM)L"Blue");
     SendMessageW(hCombo, CB_ADDSTRING, 0, (LPARAM)L"Yellow");
     CreateWindowExW(0, L"STATIC", L"Preview:", WS_CHILD | WS_VISIBLE, 260, 10, 80, 18, dlg, NULL, g_hInst, NULL);
-    CreateWindowExW(WS_EX_CLIENTEDGE, L"STATIC", NULL, WS_CHILD | WS_VISIBLE | SS_OWNERDRAW, 260, 30, 80, 80, dlg, (HMENU)CID_PREVIEW, g_hInst, NULL);
+    HWND hPrev = CreateWindowExW(WS_EX_CLIENTEDGE, L"STATIC", NULL, WS_CHILD | WS_VISIBLE | SS_OWNERDRAW, 260, 30, 80, 80, dlg, (HMENU)CID_PREVIEW, g_hInst, NULL);
     CreateWindowExW(0, L"BUTTON", L"Pick color", WS_CHILD | WS_VISIBLE, 100, 130, 80, 24, dlg, (HMENU)CID_BUTTON_COLOR, g_hInst, NULL);
     CreateWindowExW(0, L"BUTTON", L"OK", WS_CHILD | WS_VISIBLE, 80, 170, 80, 26, dlg, (HMENU)CID_OK, g_hInst, NULL);
     CreateWindowExW(0, L"BUTTON", L"Cancel", WS_CHILD | WS_VISIBLE, 180, 170, 80, 26, dlg, (HMENU)CID_CANCEL, g_hInst, NULL);
+
+    // Initialize control values
+    SetWindowTextW(heStars, std::to_wstring(g_starCount).c_str());
+    SetWindowTextW(heSpeed, std::to_wstring(g_speedPercent).c_str());
+    SetWindowTextW(heTw, std::to_wstring(g_twinklePercent).c_str());
+    // pick combo selection based on g_color
+    int sel = 0;
+    if (g_color == RGB(255, 255, 240)) sel = 0;
+    else if (g_color == RGB(200, 200, 255)) sel = 1;
+    else if (g_color == RGB(160, 180, 255)) sel = 2;
+    else if (g_color == RGB(255, 240, 180)) sel = 3;
+    SendMessageW(hCombo, CB_SETCURSEL, sel, 0);
+
+    ShowWindow(dlg, SW_SHOW);
+    UpdateWindow(dlg);
+    return dlg;
 }
 
-// Settings window proc handles control actions and closes window
-LRESULT CALLBACK SettingsWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
-    switch (msg) {
-    case WM_CREATE: {
-        CreateSettingsControls(hWnd);
-        SetDlgItemInt(hWnd, CID_EDIT_STARS, g_starCount, FALSE);
-        SetDlgItemInt(hWnd, CID_EDIT_SPEED, g_speedPercent, FALSE);
-        SetDlgItemInt(hWnd, CID_EDIT_TWINKLE, g_twinklePercent, FALSE);
-        HWND hCombo = GetDlgItem(hWnd, CID_COMBO_COLOR);
-        int sel = 0;
-        if (g_color == RGB(255, 255, 240)) sel = 0;
-        else if (g_color == RGB(200, 200, 255)) sel = 1;
-        else if (g_color == RGB(160, 180, 255)) sel = 2;
-        else if (g_color == RGB(255, 240, 180)) sel = 3;
-        SendMessageW(hCombo, CB_SETCURSEL, sel, 0);
+// Utility to read integer from edit safely
+static int GetEditInt(HWND dlg, int id, int fallback) {
+    HWND he = GetDlgItem(dlg, id);
+    if (!he) return fallback;
+    wchar_t buf[64] = {};
+    GetWindowTextW(he, buf, _countof(buf));
+    if (!buf[0]) return fallback;
+    int v = _wtoi(buf);
+    return v;
+}
+
+// Programmatic modal or modeless settings runner
+// If owner is valid and big enough, create embedded modeless child, otherwise show modal popup.
+static bool IsRectTooSmall(const RECT& rc, int minW = 220, int minH = 140) {
+    return (rc.right - rc.left) < minW || (rc.bottom - rc.top) < minH;
+}
+
+static int RunSettingsProgrammatic(HWND ownerFromCmdline) {
+    char tmp[256]; sprintf_s(tmp, "RunSettingsProgrammatic: owner=%p", ownerFromCmdline); log(tmp);
+/*
+    // If owner invalid -> modal popup
+    if (!IsWindow(ownerFromCmdline)) {
+        log("RunSettingsProgrammatic: no owner -> modal popup");
+        HWND dlg = CreateSettingsDialog(NULL, false);
+        if (!dlg) { log("RunSettingsProgrammatic: failed to create modal dlg container"); return -1; }
+
+        // Modal loop: handle messages until closed via our IDs
+        bool alive = true;
+        while (alive) {
+            MSG msg;
+            while (PeekMessageW(&msg, NULL, 0, 0, PM_REMOVE)) {
+                if (msg.message == WM_QUIT) { alive = false; break; }
+                // click handling
+                if (msg.message == WM_COMMAND && msg.hwnd == NULL) {}
+                TranslateMessage(&msg); DispatchMessageW(&msg);
+            }
+
+            // process child control actions by polling buttons
+            HWND heOk = FindWindowExW(dlg, NULL, L"BUTTON", NULL);
+            // simpler: use GetMessage loop on container and process WM_COMMAND via window subclassing below
+            Sleep(10); // keep loop friendly
+            // We won't implement full modal by polling; instead, show as popup and block via message loop until closed
+            // Use IsWindow to detect closure
+            if (!IsWindow(dlg)) break;
+        }
         return 0;
+    }*/
+    log("RunSettingsProgrammatic: forcing modal popup");
+    HWND dlg = CreateSettingsDialog(NULL, false);
+
+
+    // Owner supplied: check size
+    RECT rc; if (!GetClientRect(ownerFromCmdline, &rc)) return -1;
+    if (IsRectTooSmall(rc)) {
+        log("RunSettingsProgrammatic: owner too small -> modal popup fallback");
+        return RunSettingsProgrammatic(NULL);
     }
-    case WM_COMMAND: {
-        int id = LOWORD(wParam);
-        if (id == CID_OK) {
-            BOOL ok;
-            int stars = GetDlgItemInt(hWnd, CID_EDIT_STARS, &ok, FALSE); if (!ok) stars = g_starCount;
-            stars = max(10, min(5000, stars));
-            int speed = GetDlgItemInt(hWnd, CID_EDIT_SPEED, &ok, FALSE); if (!ok) speed = g_speedPercent;
-            speed = max(10, min(300, speed));
-            int tw = GetDlgItemInt(hWnd, CID_EDIT_TWINKLE, &ok, FALSE); if (!ok) tw = g_twinklePercent;
-            tw = max(0, min(100, tw));
-            HWND hCombo = GetDlgItem(hWnd, CID_COMBO_COLOR);
-            int sel = (int)SendMessageW(hCombo, CB_GETCURSEL, 0, 0);
-            COLORREF col = g_color;
+
+    // Create embedded child dialog inside owner
+    HWND childDlg = CreateSettingsDialog(ownerFromCmdline, true);
+    if (!childDlg) { log("RunSettingsProgrammatic: CreateSettingsDialog failed; fallback to popup"); return RunSettingsProgrammatic(NULL); }
+
+    // Center within owner
+    RECT dlgRc; GetWindowRect(childDlg, &dlgRc);
+    int ownerW = rc.right - rc.left, ownerH = rc.bottom - rc.top;
+    int dlgW = dlgRc.right - dlgRc.left, dlgH = dlgRc.bottom - dlgRc.top;
+    int x = max(0, (ownerW - dlgW) / 2), y = max(0, (ownerH - dlgH) / 2);
+    SetWindowPos(childDlg, NULL, x, y, 0, 0, SWP_NOZORDER | SWP_NOSIZE | SWP_SHOWWINDOW);
+
+    // Run message loop until child destroyed
+    log("RunSettingsProgrammatic: embedded created, running modeless loop");
+    MSG msg;
+    while (IsWindow(childDlg) && GetMessageW(&msg, NULL, 0, 0)) {
+        // Intercept WM_COMMAND for our child dialog container
+        if (msg.message == WM_COMMAND && IsWindow(childDlg)) {
+            WPARAM w = msg.wParam; int id = LOWORD(w);
+            if (id == CID_OK) {
+                log("Programmatic dialog: OK pressed");
+                // read controls and save
+                int stars = GetEditInt(childDlg, CID_EDIT_STARS, g_starCount); stars = max(10, min(5000, stars));
+                int speed = GetEditInt(childDlg, CID_EDIT_SPEED, g_speedPercent); speed = max(10, min(300, speed));
+                int tw = GetEditInt(childDlg, CID_EDIT_TWINKLE, g_twinklePercent); tw = max(0, min(100, tw));
+                HWND hCombo = GetDlgItem(childDlg, CID_COMBO_COLOR);
+                int sel = (int)SendMessageW(hCombo, CB_GETCURSEL, 0, 0);
+                COLORREF col = g_color;
     switch (sel) { case 0: col = RGB(255, 255, 240); break; case 1: col = RGB(200, 200, 255); break; case 2: col = RGB(160, 180, 255); break; case 3: col = RGB(255, 240, 180); break; }
                          g_starCount = stars; g_speedPercent = speed; g_twinklePercent = tw; g_color = col;
                          SaveSettings();
-                         DestroyWindow(hWnd);
-                         return 0;
+                         DestroyWindow(childDlg);
+                         break;
+            }
+            else if (id == CID_CANCEL) {
+                log("Programmatic dialog: Cancel pressed");
+                DestroyWindow(childDlg);
+                break;
+            }
+            else if (id == CID_BUTTON_COLOR) {
+                CHOOSECOLORW cc = {}; static COLORREF cust[16];
+                cc.lStructSize = sizeof(cc); cc.hwndOwner = childDlg; cc.lpCustColors = cust; cc.rgbResult = g_color; cc.Flags = CC_FULLOPEN | CC_RGBINIT;
+                if (ChooseColorW(&cc)) { g_color = cc.rgbResult; }
+            }
         }
-        else if (id == CID_CANCEL) {
-            DestroyWindow(hWnd);
-            return 0;
-        }
-        else if (id == CID_BUTTON_COLOR) {
-            CHOOSECOLORW cc = {}; static COLORREF cust[16];
-            cc.lStructSize = sizeof(cc); cc.hwndOwner = hWnd; cc.lpCustColors = cust; cc.rgbResult = g_color; cc.Flags = CC_FULLOPEN | CC_RGBINIT;
-            if (ChooseColorW(&cc)) { g_color = cc.rgbResult; }
-            return 0;
-        }
-        break;
+        TranslateMessage(&msg); DispatchMessageW(&msg);
     }
-    case WM_DESTROY:
-        // If used in modal loop, breaking GetMessage happens because window is gone; do not PostQuitMessage here.
-        return 0;
-    default:
-        return DefWindowProcW(hWnd, msg, wParam, lParam);
-    }
-    return 0;
-}
-
-// Register settings class once
-static void EnsureSettingsClassRegistered() {
-    static bool reg = false;
-    if (reg) return;
-    WNDCLASSW wc = {};
-    wc.lpfnWndProc = SettingsWndProc;
-    wc.hInstance = g_hInst;
-    wc.lpszClassName = L"MyStarfieldSettingsClass";
-    wc.hCursor = LoadCursor(NULL, IDC_ARROW);
-    wc.hbrBackground = (HBRUSH)(COLOR_BTNFACE + 1);
-    RegisterClassW(&wc);
-    reg = true;
-}
-
-// Show modal popup (centered) and block until closed
-static int ShowSettingsModalPopup() {
-    EnsureSettingsClassRegistered();
-    int w = 360, h = 220;
-    int sw = GetSystemMetrics(SM_CXSCREEN), sh = GetSystemMetrics(SM_CYSCREEN);
-    int x = (sw - w) / 2, y = (sh - h) / 2;
-    HWND dlg = CreateWindowExW(WS_EX_DLGMODALFRAME, L"MyStarfieldSettingsClass", L"Starfield Settings",
-        WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU, x, y, w, h,
-        NULL, NULL, g_hInst, NULL);
-    if (!dlg) { log("ShowSettingsModalPopup: CreateWindowEx failed"); return -1; }
-    ShowWindow(dlg, SW_SHOW);
-    UpdateWindow(dlg);
-
-    // Modal message loop: run until dlg destroyed
-    MSG msg;
-    while (IsWindow(dlg) && GetMessageW(&msg, NULL, 0, 0)) {
-        TranslateMessage(&msg);
-        DispatchMessageW(&msg);
-    }
-    log("ShowSettingsModalPopup: dialog closed");
+    log("RunSettingsProgrammatic: embedded loop ended");
     return 0;
 }
 
@@ -443,19 +478,13 @@ static int RunPreview(HWND parent) {
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int) {
     g_hInst = hInstance;
     LoadSettings();
-
-    // log path for verification
-    wchar_t modPath[MAX_PATH] = {};
-    GetModuleFileNameW(NULL, modPath, MAX_PATH);
-    char pathLog[512]; sprintf_s(pathLog, "Running from: %ws", modPath); log(pathLog);
-
     int argc = 0; wchar_t** argv = CommandLineToArgvW(GetCommandLineW(), &argc);
     wchar_t mode = 0; HWND argH = NULL; ParseArgs(argc, argv, mode, argH);
     { char buf[256]; sprintf_s(buf, "Parsed args mode=%c hwnd=%p", mode ? (char)mode : '0', argH); log(buf); }
 
     if (mode == 'c') {
-        log("wWinMain: entering settings (modal popup forced)");
-        ShowSettingsModalPopup();
+        log("wWinMain: entering programmatic settings");
+        RunSettingsProgrammatic(argH);
         log("wWinMain: settings branch finished");
         LocalFree(argv); return 0;
     }
@@ -465,8 +494,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int) {
             log("wWinMain: entering preview with provided parent");
             RunPreview(argH);
             log("wWinMain: preview returned");
-            LocalFree(argv);
-            return 0;
+            LocalFree(argv); return 0;
         }
         else {
             log("wWinMain: preview requested but no HWND; falling back to fullscreen");
@@ -476,7 +504,6 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int) {
     // Default: fullscreen
     log("wWinMain: entering fullscreen screensaver");
     g_running = true;
-    // Enumerate monitors and run full-screen animation
     RunFull();
     log("wWinMain: fullscreen screensaver finished");
     LocalFree(argv);

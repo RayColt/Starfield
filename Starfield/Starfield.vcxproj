@@ -132,4 +132,7 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
+  <PropertyGroup>
+    <PostBuildEvent>copy /Y "$(TargetPath)" "$(TargetDir)$(TargetName).scr"</PostBuildEvent>
+  </PropertyGroup>
 </Project>

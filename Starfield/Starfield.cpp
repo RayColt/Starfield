@@ -1,4 +1,4 @@
-// MyStarfield.cpp
+// Starfield.cpp
 // Single-file screensaver with programmatic Settings dialog (no .rc required).
 // Direct2D preview and fullscreen; strict input filtering; programmatic modal settings dialog.
 // Link: d2d1.lib
@@ -297,7 +297,7 @@ static void CreateSettingsControls(HWND dlg) {
     SendMessageW(hCombo, CB_ADDSTRING, 0, (LPARAM)L"Cool White");
     SendMessageW(hCombo, CB_ADDSTRING, 0, (LPARAM)L"Blue");
     SendMessageW(hCombo, CB_ADDSTRING, 0, (LPARAM)L"Yellow");
-    CreateWindowExW(0, L"STATIC", L"Preview:", WS_CHILD | WS_VISIBLE, 260, 10, 80, 18, dlg, NULL, g_hInst, NULL);
+    //CreateWindowExW(0, L"STATIC", L"Preview:", WS_CHILD | WS_VISIBLE, 260, 10, 80, 18, dlg, NULL, g_hInst, NULL);
     CreateWindowExW(WS_EX_CLIENTEDGE, L"STATIC", NULL, WS_CHILD | WS_VISIBLE | SS_OWNERDRAW, 260, 30, 80, 80, dlg, (HMENU)CID_PREVIEW, g_hInst, NULL);
     CreateWindowExW(0, L"BUTTON", L"Pick color", WS_CHILD | WS_VISIBLE, 100, 130, 80, 24, dlg, (HMENU)CID_BUTTON_COLOR, g_hInst, NULL);
     CreateWindowExW(0, L"BUTTON", L"OK", WS_CHILD | WS_VISIBLE, 80, 170, 80, 26, dlg, (HMENU)CID_OK, g_hInst, NULL);

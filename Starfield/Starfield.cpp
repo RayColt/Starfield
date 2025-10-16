@@ -1,6 +1,6 @@
 ﻿// Starfield.cpp
 // Build as Windows GUI (/SUBSYSTEM:WINDOWS)
-// Rename output .exe -> .scr and copy to C:\Windows\System32
+// Copy generated Starfield.scr in Debug directory to C:\Windows\System32
 
 #include <windows.h>
 #include <string>

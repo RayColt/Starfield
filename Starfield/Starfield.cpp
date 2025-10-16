@@ -122,7 +122,6 @@ static bool CreateBackbuffer(RenderWindow* rw)
     if (!rw || !rw->hwnd) return false;
     HDC wnd = GetDC(rw->hwnd);
     if (!wnd) return false;
-
     // release existing
     if (rw->backHdc)
     {
@@ -131,7 +130,6 @@ static bool CreateBackbuffer(RenderWindow* rw)
         DeleteDC(rw->backHdc);
         rw->backHdc = NULL; rw->backBmp = NULL; rw->oldBackBmp = NULL;
     }
-
     int w = max(1, rw->rc.right - rw->rc.left);
     int h = max(1, rw->rc.bottom - rw->rc.top);
     HDC mem = CreateCompatibleDC(wnd);
@@ -149,7 +147,6 @@ static bool CreateBackbuffer(RenderWindow* rw)
     HBRUSH b = (HBRUSH)GetStockObject(BLACK_BRUSH);
     RECT rc = { 0,0,w,h };
     FillRect(rw->backHdc, &rc, b);
-
     ReleaseDC(rw->hwnd, wnd);
     return true;
 }
@@ -197,10 +194,8 @@ static void InitStars(RenderWindow* rw)
     RECT r = rw->rc;
     int width = max(1, r.right - r.left);
     int height = max(1, r.bottom - r.top);
-
     rw->stars.clear();
     rw->stars.resize(g_starCount);
-
     int jitterMax = max(1, g_speed / 2 + 1);
     std::uniform_real_distribution<float> ud01(0.0f, 1.0f);
 
@@ -213,6 +208,7 @@ static void InitStars(RenderWindow* rw)
         // centered world coords as in your samples
         rw->stars[i].x = (fx - 0.5f) * (float)width * 2.0f;
         rw->stars[i].y = (fy - 0.5f) * (float)height * 2.0f;
+
         // deep range (classic)
         rw->stars[i].z = fz * (Z_MAX - Z_MIN) + Z_MIN;
         rw->stars[i].speed = (float)g_speed + float(rw->rng() % jitterMax);
@@ -274,7 +270,6 @@ static void RenderFrame(RenderWindow* rw, float dt, float totalTime)
         // map to bucket
         int bucket = (int)((intensity) / (256.0f / BUCKETS));
         bucket = max(0, min(BUCKETS - 1, bucket));
-
         if (!brushes[bucket]) 
         {
             int br = (baseR * intensity) / 255;
@@ -287,7 +282,6 @@ static void RenderFrame(RenderWindow* rw, float dt, float totalTime)
             bb = min(255, (int)lroundf(bb * whiten + 255 * (1.0f - whiten)));
             brushes[bucket] = CreateSolidBrush(RGB(br, bg, bb));
         }
-
         // skip if offscreen
         if (px + psz < 0 || px - psz > w || py + psz < 0 || py - psz > h) continue;
         HBRUSH oldBrush = (HBRUSH)SelectObject(rw->backHdc, brushes[bucket]);
@@ -296,12 +290,12 @@ static void RenderFrame(RenderWindow* rw, float dt, float totalTime)
             (int)ceilf(px + psz + 1), (int)ceilf(py + psz + 1));
         SelectObject(rw->backHdc, oldBrush);
     }
-
     // cleanup
-    for (int i = 0; i < BUCKETS; ++i) if (brushes[i]) { DeleteObject(brushes[i]); brushes[i] = NULL; }
-
+    for (int i = 0; i < BUCKETS; ++i) if (brushes[i]) 
+    { 
+        DeleteObject(brushes[i]); brushes[i] = NULL; 
+    }
     SelectObject(rw->backHdc, oldPen);
-
     // blit
     HDC wnd = GetDC(rw->hwnd);
     BitBlt(wnd, 0, 0, w, h, rw->backHdc, 0, 0, SRCCOPY);
@@ -322,48 +316,56 @@ LRESULT CALLBACK FullWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) 
     RenderWindow* rw = (RenderWindow*)GetWindowLongPtrW(hWnd, GWLP_USERDATA);
     switch (msg)
     {
-    case WM_CREATE: g_startMouseInit = false; return 0;
-    case WM_SIZE:
-        if (rw)
+        case WM_CREATE: g_startMouseInit = false; return 0;
+        case WM_SIZE:
+            if (rw)
+            {
+                GetClientRect(hWnd, &rw->rc);
+                DestroyBackbuffer(rw);
+                CreateBackbuffer(rw);
+                g_startMouseInit = false;
+            }
+            return 0;
+        case WM_KEYDOWN:
+        case WM_LBUTTONDOWN:
+        case WM_RBUTTONDOWN:
+        case WM_MBUTTONDOWN:
+        case WM_XBUTTONDOWN:
+        case WM_MOUSEMOVE:
         {
-            GetClientRect(hWnd, &rw->rc);
-            DestroyBackbuffer(rw);
-            CreateBackbuffer(rw);
-            g_startMouseInit = false;
+            LARGE_INTEGER now; QueryPerformanceCounter(&now);
+            double seconds = double(now.QuadPart - g_startCounter.QuadPart) / double(g_perfFreq.QuadPart);
+            if (seconds < g_inputDebounceSeconds) { return 0; }
+            if (!ForegroundIsOurWindow()) { return 0; }
+            if (msg == WM_MOUSEMOVE)
+            {
+                POINT cur; GetCursorPos(&cur);
+                if (!g_startMouseInit) { g_startMouse = cur; g_startMouseInit = true; return 0; }
+                int dx = abs(cur.x - g_startMouse.x), dy = abs(cur.y - g_startMouse.y);
+                if (dx < g_mouseMoveThreshold && dy < g_mouseMoveThreshold) { return 0; }
+            }
+            g_running = false; PostQuitMessage(0);
+            return 0;
         }
-        return 0;
-    case WM_KEYDOWN:
-    case WM_LBUTTONDOWN:
-    case WM_RBUTTONDOWN:
-    case WM_MBUTTONDOWN:
-    case WM_XBUTTONDOWN:
-    case WM_MOUSEMOVE:
-    {
-        LARGE_INTEGER now; QueryPerformanceCounter(&now);
-        double seconds = double(now.QuadPart - g_startCounter.QuadPart) / double(g_perfFreq.QuadPart);
-        if (seconds < g_inputDebounceSeconds) { return 0; }
-        if (!ForegroundIsOurWindow()) { return 0; }
-        if (msg == WM_MOUSEMOVE)
-        {
-            POINT cur; GetCursorPos(&cur);
-            if (!g_startMouseInit) { g_startMouse = cur; g_startMouseInit = true; return 0; }
-            int dx = abs(cur.x - g_startMouse.x), dy = abs(cur.y - g_startMouse.y);
-            if (dx < g_mouseMoveThreshold && dy < g_mouseMoveThreshold) { return 0; }
-        }
-        g_running = false; PostQuitMessage(0);
-        return 0;
-    }
-    case WM_DESTROY: return 0;
-    default: return DefWindowProcW(hWnd, msg, wParam, lParam);
+        case WM_DESTROY: return 0;
+        default: return DefWindowProcW(hWnd, msg, wParam, lParam);
     }
 }
 
 // Preview proc
-LRESULT CALLBACK PreviewProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
-    switch (msg) {
-    case WM_ERASEBKGND: return 1;
-    case WM_PAINT: { PAINTSTRUCT ps; HDC hdc = BeginPaint(hWnd, &ps); FillRect(hdc, &ps.rcPaint, (HBRUSH)GetStockObject(BLACK_BRUSH)); EndPaint(hWnd, &ps); return 0; }
-    default: return DefWindowProcW(hWnd, msg, wParam, lParam);
+LRESULT CALLBACK PreviewProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+    switch (msg) 
+    {
+        case WM_ERASEBKGND: return 1;
+        case WM_PAINT: 
+        { 
+            PAINTSTRUCT ps; 
+            HDC hdc = BeginPaint(hWnd, &ps); 
+            FillRect(hdc, &ps.rcPaint, (HBRUSH)GetStockObject(BLACK_BRUSH)); EndPaint(hWnd, &ps); 
+            return 0; 
+        }
+        default: return DefWindowProcW(hWnd, msg, wParam, lParam);
     }
 }
 
@@ -547,7 +549,6 @@ static int ShowSettingsModalPopup()
     if (!dlg) { return -1; }
     ShowWindow(dlg, SW_SHOW);
     UpdateWindow(dlg);
-
     // Modal message loop: run until dlg destroyed
     MSG msg;
     while (IsWindow(dlg) && GetMessageW(&msg, NULL, 0, 0))
@@ -562,17 +563,21 @@ static int ShowSettingsModalPopup()
 static int RunPreview(HWND parent)
 {
     if (!IsWindow(parent)) return 0;
-    WNDCLASSW wc = {}; wc.lpfnWndProc = PreviewProc; wc.hInstance = g_hInst; wc.lpszClassName = L"MyStarPre";
+    WNDCLASSW wc = {}; 
+    wc.lpfnWndProc = PreviewProc; 
+    wc.hInstance = g_hInst; wc.lpszClassName = L"MyStarPre";
     RegisterClassW(&wc);
     RECT pr; GetClientRect(parent, &pr);
     HWND child = CreateWindowExW(0, wc.lpszClassName, L"", WS_CHILD | WS_VISIBLE, 0, 0, pr.right - pr.left, pr.bottom - pr.top, parent, NULL, g_hInst, NULL);
-    if (!child) { UnregisterClassW(wc.lpszClassName, g_hInst); return 0; }
-
+    if (!child)
+    { 
+        UnregisterClassW(wc.lpszClassName, g_hInst); 
+        return 0; 
+    }
     RenderWindow* rw = new RenderWindow();
     rw->hwnd = child; rw->isPreview = true; rw->rc = pr;
     std::random_device rd; rw->rng.seed(rd());
     CreateBackbuffer(rw); InitStars(rw);
-
     QueryPerformanceFrequency(&g_perfFreq);
     LARGE_INTEGER last; QueryPerformanceCounter(&last);
     double total = 0.0; MSG msg;
@@ -588,7 +593,6 @@ static int RunPreview(HWND parent)
         RenderFrame(rw, (float)dt, (float)total);
         Sleep(15);
     }
-
     DestroyBackbuffer(rw);
     DestroyWindow(child);
     UnregisterClassW(wc.lpszClassName, g_hInst);
@@ -600,22 +604,23 @@ static int RunPreview(HWND parent)
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int) {
     g_hInst = hInstance;
     LoadSettings();
-
     // log path for verification
     wchar_t modPath[MAX_PATH] = {};
     GetModuleFileNameW(NULL, modPath, MAX_PATH);
     char pathLog[512]; sprintf_s(pathLog, "Running from: %ws", modPath);
-
-    int argc = 0; wchar_t** argv = CommandLineToArgvW(GetCommandLineW(), &argc);
-    wchar_t mode = 0; HWND argH = NULL; ParseArgs(argc, argv, mode, argH);
-    { char buf[256]; sprintf_s(buf, "Parsed args mode=%c hwnd=%p", mode ? (char)mode : '0', argH); }
-
+    int argc = 0; 
+    wchar_t** argv = CommandLineToArgvW(GetCommandLineW(), &argc);
+    wchar_t mode = 0; 
+    HWND argH = NULL; 
+    ParseArgs(argc, argv, mode, argH);
+    { 
+        char buf[256]; sprintf_s(buf, "Parsed args mode=%c hwnd=%p", mode ? (char)mode : '0', argH); 
+    }
     if (mode == 'c')
     {
         ShowSettingsModalPopup();
         LocalFree(argv); return 0;
     }
-
     if (mode == 'p')
     {
         if (argH)

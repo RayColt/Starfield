@@ -163,20 +163,6 @@ static void DestroyBackbuffer(RenderWindow* rw)
     }
 }
 
-// Helper frand [0,1)
-static inline float frand_mt(std::mt19937& rng)
-{
-    return (rng() & 0x7FFFFFFF) / 2147483648.0f;
-}
-
-
-static inline std::string vprint(float v, int precision = 4)
-{
-    char buf[128];
-    int n = sprintf_s(buf, sizeof(buf), "%.*g", precision, v);
-    return (n > 0) ? std::string(buf, (size_t)n) : std::string();
-}
-
 // InitStars: centered world coords (so projection works predictably)
 // Smaller Z_MIN(closer to 0) makes stars appear larger and move faster 
 // as they approach because projection uses 1 / z.
@@ -444,7 +430,7 @@ static void CreateSettingsControls(HWND dlg)
 {
     CreateWindowExW(0, L"STATIC", L"Star count:", WS_CHILD | WS_VISIBLE, 10, 10, 80, 18, dlg, NULL, g_hInst, NULL);
     CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", NULL, WS_CHILD | WS_VISIBLE | ES_NUMBER | ES_LEFT, 100, 8, 80, 20, dlg, (HMENU)CID_EDIT_STARS, g_hInst, NULL);
-    CreateWindowExW(0, L"STATIC", L"Speed (%) :", WS_CHILD | WS_VISIBLE, 10, 40, 80, 18, dlg, NULL, g_hInst, NULL);
+    CreateWindowExW(0, L"STATIC", L"Speed:", WS_CHILD | WS_VISIBLE, 10, 40, 80, 18, dlg, NULL, g_hInst, NULL);
     CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", NULL, WS_CHILD | WS_VISIBLE | ES_NUMBER | ES_LEFT, 100, 38, 80, 20, dlg, (HMENU)CID_EDIT_SPEED, g_hInst, NULL);
     CreateWindowExW(0, L"BUTTON", L"OK", WS_CHILD | WS_VISIBLE, 80, 70, 80, 26, dlg, (HMENU)CID_OK, g_hInst, NULL);
     CreateWindowExW(0, L"BUTTON", L"Cancel", WS_CHILD | WS_VISIBLE, 168, 70, 80, 26, dlg, (HMENU)CID_CANCEL, g_hInst, NULL);

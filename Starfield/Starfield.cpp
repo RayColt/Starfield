@@ -275,7 +275,8 @@ static void RenderFrame(RenderWindow* rw, float dt, float totalTime)
         int bucket = (int)((intensity) / (256.0f / BUCKETS));
         bucket = max(0, min(BUCKETS - 1, bucket));
 
-        if (!brushes[bucket]) {
+        if (!brushes[bucket]) 
+        {
             int br = (baseR * intensity) / 255;
             int bg = (baseG * intensity) / 255;
             int bb = (baseB * intensity) / 255;
@@ -289,7 +290,6 @@ static void RenderFrame(RenderWindow* rw, float dt, float totalTime)
 
         // skip if offscreen
         if (px + psz < 0 || px - psz > w || py + psz < 0 || py - psz > h) continue;
-
         HBRUSH oldBrush = (HBRUSH)SelectObject(rw->backHdc, brushes[bucket]);
         Ellipse(rw->backHdc,
             (int)floorf(px - psz), (int)floorf(py - psz),

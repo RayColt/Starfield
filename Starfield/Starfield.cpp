@@ -166,7 +166,6 @@ static void DestroyBackbuffer(RenderWindow* rw)
     }
 }
 
-
 // Helper frand [0,1)
 static inline float frand_mt(std::mt19937& rng)
 {
@@ -384,7 +383,11 @@ static BOOL CALLBACK MonEnumProc(HMONITOR hMon, HDC, LPRECT, LPARAM)
     }
     HWND hwnd = CreateWindowExW(WS_EX_TOPMOST, L"StarfieldFullClass", L"Starfield", WS_POPUP | WS_VISIBLE,
         r.left, r.top, r.right - r.left, r.bottom - r.top, NULL, NULL, g_hInst, NULL);
-    if (!hwnd) { delete rw; return TRUE; }
+    if (!hwnd) 
+    { 
+        delete rw; 
+        return TRUE; 
+    }
     rw->hwnd = hwnd; SetWindowLongPtrW(hwnd, GWLP_USERDATA, (LONG_PTR)rw); ShowWindow(hwnd, SW_SHOW);
     GetClientRect(hwnd, &rw->rc);
     CreateBackbuffer(rw);
@@ -404,8 +407,18 @@ static void RunFull()
     double total = 0.0; MSG msg;
     while (g_running)
     {
-        while (PeekMessageW(&msg, NULL, 0, 0, PM_REMOVE)) { if (msg.message == WM_QUIT) { g_running = false; break; } TranslateMessage(&msg); DispatchMessageW(&msg); }
-        LARGE_INTEGER now; QueryPerformanceCounter(&now);
+        while (PeekMessageW(&msg, NULL, 0, 0, PM_REMOVE)) 
+        { 
+            if (msg.message == WM_QUIT) 
+            { 
+                g_running = false; 
+                break; 
+            } 
+            TranslateMessage(&msg);
+            DispatchMessageW(&msg); 
+        }
+        LARGE_INTEGER now; 
+        QueryPerformanceCounter(&now);
         double dt = double(now.QuadPart - last.QuadPart) / double(g_perfFreq.QuadPart);
         last = now; total += dt;
         for (auto rw : g_windows) RenderFrame(rw, (float)dt, (float)total);
@@ -469,7 +482,10 @@ LRESULT CALLBACK SettingsWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPar
             COLORREF col = g_color;
             switch (sel)
             {
-            case 0: col = RGB(255, 255, 240); break; case 1: col = RGB(200, 200, 255); break; case 2: col = RGB(160, 180, 255); break; case 3: col = RGB(255, 240, 180); break;
+                case 0: col = RGB(255, 255, 240); break; 
+                case 1: col = RGB(200, 200, 255); break; 
+                case 2: col = RGB(160, 180, 255); break; 
+                case 3: col = RGB(255, 240, 180); break;
             }
             g_starCount = stars; g_speed = speed; g_color = col;
             SaveSettings();
@@ -483,8 +499,13 @@ LRESULT CALLBACK SettingsWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPar
         }
         else if (id == CID_BUTTON_COLOR)
         {
-            CHOOSECOLORW cc = {}; static COLORREF cust[16];
-            cc.lStructSize = sizeof(cc); cc.hwndOwner = hWnd; cc.lpCustColors = cust; cc.rgbResult = g_color; cc.Flags = CC_FULLOPEN | CC_RGBINIT;
+            CHOOSECOLORW cc = {};
+            static COLORREF cust[16];
+            cc.lStructSize = sizeof(cc); 
+            cc.hwndOwner = hWnd; 
+            cc.lpCustColors = cust; 
+            cc.rgbResult = g_color; 
+            cc.Flags = CC_FULLOPEN | CC_RGBINIT;
             if (ChooseColorW(&cc)) { g_color = cc.rgbResult; }
             return 0;
         }

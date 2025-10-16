@@ -423,7 +423,7 @@ static void RunFull()
 
 // ---------------- Settings dialog programmatic UI ----------------
 // IDs
-enum { CID_OK = 100, CID_CANCEL = 101, CID_EDIT_STARS = 110, CID_EDIT_SPEED = 111, CID_COMBO_COLOR = 114, CID_BUTTON_COLOR = 115, CID_PREVIEW = 116 };
+enum { CID_OK = 100, CID_CANCEL = 101, CID_EDIT_STARS = 110, CID_EDIT_SPEED = 111, CID_PREVIEW = 112 };
 
 // Create child controls on given window
 static void CreateSettingsControls(HWND dlg)
@@ -446,13 +446,6 @@ LRESULT CALLBACK SettingsWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPar
             CreateSettingsControls(hWnd);
             SetDlgItemInt(hWnd, CID_EDIT_STARS, g_starCount, FALSE);
             SetDlgItemInt(hWnd, CID_EDIT_SPEED, g_speed, FALSE);
-            HWND hCombo = GetDlgItem(hWnd, CID_COMBO_COLOR);
-            int sel = 0;
-            if (g_color == RGB(255, 255, 240)) sel = 0;
-            else if (g_color == RGB(200, 200, 255)) sel = 1;
-            else if (g_color == RGB(160, 180, 255)) sel = 2;
-            else if (g_color == RGB(255, 240, 180)) sel = 3;
-            SendMessageW(hCombo, CB_SETCURSEL, sel, 0);
             return 0;
         }
         case WM_COMMAND:
@@ -465,17 +458,7 @@ LRESULT CALLBACK SettingsWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPar
                 stars = std::fmax(10, std::fmin(5000, stars));
                 int speed = GetDlgItemInt(hWnd, CID_EDIT_SPEED, &ok, FALSE); if (!ok) speed = g_speed;
                 speed = std::fmax(10, std::fmin(300, speed));
-                HWND hCombo = GetDlgItem(hWnd, CID_COMBO_COLOR);
-                int sel = (int)SendMessageW(hCombo, CB_GETCURSEL, 0, 0);
-                COLORREF col = g_color;
-                switch (sel)
-                {
-                    case 0: col = RGB(255, 255, 240); break; 
-                    case 1: col = RGB(200, 200, 255); break; 
-                    case 2: col = RGB(160, 180, 255); break; 
-                    case 3: col = RGB(255, 240, 180); break;
-                }
-                g_starCount = stars; g_speed = speed; g_color = col;
+                g_starCount = stars; g_speed = speed;
                 SaveSettings();
                 DestroyWindow(hWnd);
                 return 0;

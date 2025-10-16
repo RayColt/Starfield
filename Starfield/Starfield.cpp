@@ -485,18 +485,6 @@ LRESULT CALLBACK SettingsWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPar
                 DestroyWindow(hWnd);
                 return 0;
             }
-            else if (id == CID_BUTTON_COLOR)
-            {
-                CHOOSECOLORW cc = {};
-                static COLORREF cust[16];
-                cc.lStructSize = sizeof(cc); 
-                cc.hwndOwner = hWnd; 
-                cc.lpCustColors = cust; 
-                cc.rgbResult = g_color; 
-                cc.Flags = CC_FULLOPEN | CC_RGBINIT;
-                if (ChooseColorW(&cc)) { g_color = cc.rgbResult; }
-                return 0;
-            }
             break;
         }
         case WM_DESTROY:

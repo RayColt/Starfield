@@ -85,7 +85,7 @@ static bool g_running = true;
 // Input filtering
 static LARGE_INTEGER g_perfFreq;
 static LARGE_INTEGER g_startCounter;
-static double g_inputDebounceSeconds = 0.75;
+static double g_inputDebounceSeconds = 0.66; // mouse movement speed to stop screensaver from running
 static POINT g_startMouse = { 0,0 };
 static bool g_startMouseInit = false;
 static const int g_mouseMoveThreshold = 12; // pixels
@@ -134,7 +134,8 @@ static bool CreateBackbuffer(RenderWindow* rw)
     int h = max(1, rw->rc.bottom - rw->rc.top);
     HDC mem = CreateCompatibleDC(wnd);
     HBITMAP bmp = CreateCompatibleBitmap(wnd, w, h);
-    if (!mem || !bmp) {
+    if (!mem || !bmp) 
+    {
         if (mem) DeleteDC(mem);
         ReleaseDC(rw->hwnd, wnd);
         return false;
@@ -142,7 +143,6 @@ static bool CreateBackbuffer(RenderWindow* rw)
     rw->oldBackBmp = (HBITMAP)SelectObject(mem, bmp);
     rw->backHdc = mem;
     rw->backBmp = bmp;
-
     // init black background
     HBRUSH b = (HBRUSH)GetStockObject(BLACK_BRUSH);
     RECT rc = { 0,0,w,h };
@@ -173,7 +173,6 @@ static const float Z_MAX = 33.0f;
 static const float FOCAL = 9.0f;
 // multiplier that controls drawn core size; increase for larger stars
 static const float SIZE_SCALE = 1.0f;
-
 static void InitStars(RenderWindow* rw)
 {
     if (!rw) return;
@@ -288,13 +287,14 @@ static void RenderFrame(RenderWindow* rw, float dt, float totalTime)
     ReleaseDC(rw->hwnd, wnd);
 }
 
-
-
 // ---- Foreground check and window procs
 static bool ForegroundIsOurWindow()
 {
-    HWND fg = GetForegroundWindow(); if (!fg) return false;
-    DWORD fgPid = 0; GetWindowThreadProcessId(fg, &fgPid); return (fgPid == GetCurrentProcessId());
+    HWND fg = GetForegroundWindow(); 
+    if (!fg) return false;
+    DWORD fgPid = 0; 
+    GetWindowThreadProcessId(fg, &fgPid); 
+    return (fgPid == GetCurrentProcessId());
 }
 
 // Fullscreen window proc (uses input filtering)
@@ -526,7 +526,7 @@ static void EnsureSettingsClassRegistered()
 static int ShowSettingsModalPopup()
 {
     EnsureSettingsClassRegistered();
-    int w = 360, h = 220;
+    int w = 360, h = 144;
     int sw = GetSystemMetrics(SM_CXSCREEN), sh = GetSystemMetrics(SM_CYSCREEN);
     int x = (sw - w) / 2, y = (sh - h) / 2;
     HWND dlg = CreateWindowExW(WS_EX_DLGMODALFRAME, L"StarfieldSettingsClass", L"Starfield Settings",

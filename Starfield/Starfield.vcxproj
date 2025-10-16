@@ -88,12 +88,16 @@
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <AdditionalManifestDependencies>
       </AdditionalManifestDependencies>
+      <ManifestFile>
+      </ManifestFile>
     </Link>
     <PostBuildEvent>
       <Command>copy /Y "$(TargetPath)" "$(TargetDir)$(TargetName).scr"</Command>
+      <Message>copies Starfield.exe into Starfield.scr</Message>
     </PostBuildEvent>
     <Manifest>
-      <AdditionalManifestFiles>$(ProjectName)$(SolutionDir)$(ProjectName)\app.manifest</AdditionalManifestFiles>
+      <AdditionalManifestFiles>
+      </AdditionalManifestFiles>
     </Manifest>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">

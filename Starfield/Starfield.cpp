@@ -423,7 +423,7 @@ static void RunFull()
 
 // ---------------- Settings dialog programmatic UI ----------------
 // IDs
-enum { CID_OK = 100, CID_CANCEL = 101, CID_EDIT_STARS = 110, CID_EDIT_SPEED = 111, CID_EDIT_TWINKLE = 112, CID_COMBO_COLOR = 113, CID_BUTTON_COLOR = 114, CID_PREVIEW = 115 };
+enum { CID_OK = 100, CID_CANCEL = 101, CID_EDIT_STARS = 110, CID_EDIT_SPEED = 111, CID_COMBO_COLOR = 114, CID_BUTTON_COLOR = 115, CID_PREVIEW = 116 };
 
 // Create child controls on given window
 static void CreateSettingsControls(HWND dlg)
@@ -441,68 +441,68 @@ LRESULT CALLBACK SettingsWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPar
 {
     switch (msg)
     {
-    case WM_CREATE:
-    {
-        CreateSettingsControls(hWnd);
-        SetDlgItemInt(hWnd, CID_EDIT_STARS, g_starCount, FALSE);
-        SetDlgItemInt(hWnd, CID_EDIT_SPEED, g_speed, FALSE);
-        HWND hCombo = GetDlgItem(hWnd, CID_COMBO_COLOR);
-        int sel = 0;
-        if (g_color == RGB(255, 255, 240)) sel = 0;
-        else if (g_color == RGB(200, 200, 255)) sel = 1;
-        else if (g_color == RGB(160, 180, 255)) sel = 2;
-        else if (g_color == RGB(255, 240, 180)) sel = 3;
-        SendMessageW(hCombo, CB_SETCURSEL, sel, 0);
-        return 0;
-    }
-    case WM_COMMAND:
-    {
-        int id = LOWORD(wParam);
-        if (id == CID_OK)
+        case WM_CREATE:
         {
-            BOOL ok;
-            int stars = GetDlgItemInt(hWnd, CID_EDIT_STARS, &ok, FALSE); if (!ok) stars = g_starCount;
-            stars = std::fmax(10, std::fmin(5000, stars));
-            int speed = GetDlgItemInt(hWnd, CID_EDIT_SPEED, &ok, FALSE); if (!ok) speed = g_speed;
-            speed = std::fmax(10, std::fmin(300, speed));
+            CreateSettingsControls(hWnd);
+            SetDlgItemInt(hWnd, CID_EDIT_STARS, g_starCount, FALSE);
+            SetDlgItemInt(hWnd, CID_EDIT_SPEED, g_speed, FALSE);
             HWND hCombo = GetDlgItem(hWnd, CID_COMBO_COLOR);
-            int sel = (int)SendMessageW(hCombo, CB_GETCURSEL, 0, 0);
-            COLORREF col = g_color;
-            switch (sel)
+            int sel = 0;
+            if (g_color == RGB(255, 255, 240)) sel = 0;
+            else if (g_color == RGB(200, 200, 255)) sel = 1;
+            else if (g_color == RGB(160, 180, 255)) sel = 2;
+            else if (g_color == RGB(255, 240, 180)) sel = 3;
+            SendMessageW(hCombo, CB_SETCURSEL, sel, 0);
+            return 0;
+        }
+        case WM_COMMAND:
+        {
+            int id = LOWORD(wParam);
+            if (id == CID_OK)
             {
-                case 0: col = RGB(255, 255, 240); break; 
-                case 1: col = RGB(200, 200, 255); break; 
-                case 2: col = RGB(160, 180, 255); break; 
-                case 3: col = RGB(255, 240, 180); break;
+                BOOL ok;
+                int stars = GetDlgItemInt(hWnd, CID_EDIT_STARS, &ok, FALSE); if (!ok) stars = g_starCount;
+                stars = std::fmax(10, std::fmin(5000, stars));
+                int speed = GetDlgItemInt(hWnd, CID_EDIT_SPEED, &ok, FALSE); if (!ok) speed = g_speed;
+                speed = std::fmax(10, std::fmin(300, speed));
+                HWND hCombo = GetDlgItem(hWnd, CID_COMBO_COLOR);
+                int sel = (int)SendMessageW(hCombo, CB_GETCURSEL, 0, 0);
+                COLORREF col = g_color;
+                switch (sel)
+                {
+                    case 0: col = RGB(255, 255, 240); break; 
+                    case 1: col = RGB(200, 200, 255); break; 
+                    case 2: col = RGB(160, 180, 255); break; 
+                    case 3: col = RGB(255, 240, 180); break;
+                }
+                g_starCount = stars; g_speed = speed; g_color = col;
+                SaveSettings();
+                DestroyWindow(hWnd);
+                return 0;
             }
-            g_starCount = stars; g_speed = speed; g_color = col;
-            SaveSettings();
-            DestroyWindow(hWnd);
-            return 0;
+            else if (id == CID_CANCEL)
+            {
+                DestroyWindow(hWnd);
+                return 0;
+            }
+            else if (id == CID_BUTTON_COLOR)
+            {
+                CHOOSECOLORW cc = {};
+                static COLORREF cust[16];
+                cc.lStructSize = sizeof(cc); 
+                cc.hwndOwner = hWnd; 
+                cc.lpCustColors = cust; 
+                cc.rgbResult = g_color; 
+                cc.Flags = CC_FULLOPEN | CC_RGBINIT;
+                if (ChooseColorW(&cc)) { g_color = cc.rgbResult; }
+                return 0;
+            }
+            break;
         }
-        else if (id == CID_CANCEL)
-        {
-            DestroyWindow(hWnd);
+        case WM_DESTROY:
             return 0;
-        }
-        else if (id == CID_BUTTON_COLOR)
-        {
-            CHOOSECOLORW cc = {};
-            static COLORREF cust[16];
-            cc.lStructSize = sizeof(cc); 
-            cc.hwndOwner = hWnd; 
-            cc.lpCustColors = cust; 
-            cc.rgbResult = g_color; 
-            cc.Flags = CC_FULLOPEN | CC_RGBINIT;
-            if (ChooseColorW(&cc)) { g_color = cc.rgbResult; }
-            return 0;
-        }
-        break;
-    }
-    case WM_DESTROY:
-        return 0;
-    default:
-        return DefWindowProcW(hWnd, msg, wParam, lParam);
+        default:
+            return DefWindowProcW(hWnd, msg, wParam, lParam);
     }
     return 0;
 }

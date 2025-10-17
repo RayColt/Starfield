@@ -367,7 +367,9 @@ static BOOL CALLBACK MonEnumProc(HMONITOR hMon, HDC, LPRECT, LPARAM)
     if (!GetMonitorInfoW(hMon, &mi)) return TRUE;
     RECT r = mi.rcMonitor;
     RenderWindow* rw = new RenderWindow();
-    rw->rc = r; std::random_device rd; rw->rng.seed(rd());
+    rw->rc = r; 
+    std::random_device rd; 
+    rw->rng.seed(rd());
     static bool reg = false;
     if (!reg)
     {
@@ -395,7 +397,10 @@ static void RunFull()
     EnumDisplayMonitors(NULL, NULL, MonEnumProc, 0);
     QueryPerformanceFrequency(&g_perfFreq);
     QueryPerformanceCounter(&g_startCounter);
-    POINT p; GetCursorPos(&p); g_startMouse = p; g_startMouseInit = true;
+    POINT p; 
+    GetCursorPos(&p); 
+    g_startMouse = p; 
+    g_startMouseInit = true;
     LARGE_INTEGER last; 
     QueryPerformanceCounter(&last);
     double total = 0.0; 

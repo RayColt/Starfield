@@ -330,15 +330,22 @@ LRESULT CALLBACK FullWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
             if (msg == WM_MOUSEMOVE)
             {
                 POINT cur; GetCursorPos(&cur);
-                if (!g_startMouseInit) { g_startMouse = cur; g_startMouseInit = true; return 0; }
+                if (!g_startMouseInit) 
+                { 
+                    g_startMouse = cur;
+                    g_startMouseInit = true; 
+                    return 0; 
+                }
                 int dx = abs(cur.x - g_startMouse.x), dy = abs(cur.y - g_startMouse.y);
                 if (dx < g_mouseMoveThreshold && dy < g_mouseMoveThreshold) { return 0; }
             }
             g_running = false; PostQuitMessage(0);
             return 0;
         }
-        case WM_DESTROY: return 0;
-        default: return DefWindowProcW(hWnd, msg, wParam, lParam);
+        case WM_DESTROY: 
+            return 0;
+        default: 
+            return DefWindowProcW(hWnd, msg, wParam, lParam);
     }
 }
 
@@ -352,7 +359,8 @@ LRESULT CALLBACK PreviewProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         { 
             PAINTSTRUCT ps; 
             HDC hdc = BeginPaint(hWnd, &ps); 
-            FillRect(hdc, &ps.rcPaint, (HBRUSH)GetStockObject(BLACK_BRUSH)); EndPaint(hWnd, &ps); 
+            FillRect(hdc, &ps.rcPaint, (HBRUSH)GetStockObject(BLACK_BRUSH)); 
+            EndPaint(hWnd, &ps); 
             return 0; 
         }
         default: return DefWindowProcW(hWnd, msg, wParam, lParam);
@@ -383,7 +391,9 @@ static BOOL CALLBACK MonEnumProc(HMONITOR hMon, HDC, LPRECT, LPARAM)
         delete rw; 
         return TRUE; 
     }
-    rw->hwnd = hwnd; SetWindowLongPtrW(hwnd, GWLP_USERDATA, (LONG_PTR)rw); ShowWindow(hwnd, SW_SHOW);
+    rw->hwnd = hwnd; 
+    SetWindowLongPtrW(hwnd, GWLP_USERDATA, (LONG_PTR)rw); 
+    ShowWindow(hwnd, SW_SHOW);
     GetClientRect(hwnd, &rw->rc);
     CreateBackbuffer(rw);
     InitStars(rw);

@@ -396,7 +396,8 @@ static void RunFull()
     QueryPerformanceFrequency(&g_perfFreq);
     QueryPerformanceCounter(&g_startCounter);
     POINT p; GetCursorPos(&p); g_startMouse = p; g_startMouseInit = true;
-    LARGE_INTEGER last; QueryPerformanceCounter(&last);
+    LARGE_INTEGER last; 
+    QueryPerformanceCounter(&last);
     double total = 0.0; 
     MSG msg;
     while (g_running)
@@ -542,7 +543,8 @@ static int RunPreview(HWND parent)
     std::random_device rd; rw->rng.seed(rd());
     CreateBackbuffer(rw); InitStars(rw);
     QueryPerformanceFrequency(&g_perfFreq);
-    LARGE_INTEGER last; QueryPerformanceCounter(&last);
+    LARGE_INTEGER last; 
+    QueryPerformanceCounter(&last);
     double total = 0.0; MSG msg;
     while (IsWindow(child)) {
         while (PeekMessageW(&msg, NULL, 0, 0, PM_REMOVE))
@@ -550,7 +552,8 @@ static int RunPreview(HWND parent)
             if (msg.message == WM_QUIT) { DestroyWindow(child); break; }
             TranslateMessage(&msg); DispatchMessageW(&msg);
         }
-        LARGE_INTEGER now; QueryPerformanceCounter(&now);
+        LARGE_INTEGER now; 
+        QueryPerformanceCounter(&now);
         double dt = double(now.QuadPart - last.QuadPart) / double(g_perfFreq.QuadPart);
         last = now; total += dt;
         RenderFrame(rw, (float)dt, (float)total);

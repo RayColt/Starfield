@@ -21,8 +21,9 @@ static LPCWSTR REG_SPEED = L"SpeedPercent";
 // Defaults
 static int g_starCount = 600;
 static int g_speed = 60;
-
-static COLORREF g_color = RGB(255, 255, 255);
+static int g_MaxStars = 5000;
+static int g_MaxSpeed = 300;
+static COLORREF g_color = RGB(255, 255, 255);// TODO: make configurable
 
 // Registry helpers
 static int GetRegDWORD(LPCWSTR name, int def)
@@ -385,8 +386,13 @@ static BOOL CALLBACK MonEnumProc(HMONITOR hMon, HDC, LPRECT, LPARAM)
     static bool reg = false;
     if (!reg)
     {
-        WNDCLASSW wc = {}; wc.lpfnWndProc = FullWndProc; wc.hInstance = g_hInst; wc.lpszClassName = L"StarfieldFullClass"; wc.hCursor = LoadCursor(NULL, IDC_ARROW);
-        RegisterClassW(&wc); reg = true;
+        WNDCLASSW wc = {}; 
+        wc.lpfnWndProc = FullWndProc; 
+        wc.hInstance = g_hInst;
+        wc.lpszClassName = L"StarfieldFullClass";
+        wc.hCursor = LoadCursor(NULL, IDC_ARROW);
+        RegisterClassW(&wc); 
+        reg = true;
     }
     HWND hwnd = CreateWindowExW(WS_EX_TOPMOST, L"StarfieldFullClass", L"Starfield", WS_POPUP | WS_VISIBLE,
         r.left, r.top, r.right - r.left, r.bottom - r.top, NULL, NULL, g_hInst, NULL);
@@ -480,11 +486,14 @@ LRESULT CALLBACK SettingsWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPar
             if (id == CID_OK)
             {
                 BOOL ok;
-                int stars = GetDlgItemInt(hWnd, CID_EDIT_STARS, &ok, FALSE); if (!ok) stars = g_starCount;
-                stars = std::fmax(10, std::fmin(5000, stars));
-                int speed = GetDlgItemInt(hWnd, CID_EDIT_SPEED, &ok, FALSE); if (!ok) speed = g_speed;
-                speed = std::fmax(10, std::fmin(300, speed));
-                g_starCount = stars; g_speed = speed;
+                int stars = GetDlgItemInt(hWnd, CID_EDIT_STARS, &ok, FALSE); 
+                if (!ok) stars = g_starCount;
+                stars = std::fmax(10, std::fmin(g_MaxStars, stars));
+                int speed = GetDlgItemInt(hWnd, CID_EDIT_SPEED, &ok, FALSE); 
+                if (!ok) speed = g_speed;
+                speed = std::fmax(10, std::fmin(g_MaxSpeed, speed));
+                g_starCount = stars; 
+                g_speed = speed;
                 SaveSettings();
                 DestroyWindow(hWnd);
                 return 0;

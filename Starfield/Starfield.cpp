@@ -81,22 +81,23 @@ struct RenderWindow
 };
 
 // Globals
-static HINSTANCE g_hInst = NULL;
-static std::vector<RenderWindow*> g_windows;
-static bool g_running = true;
+static HINSTANCE g_Hinst = NULL;
+static std::vector<RenderWindow*> g_Windows;
+static bool g_Running = true;
 
 // Input filtering
-static LARGE_INTEGER g_perfFreq;
-static LARGE_INTEGER g_startCounter;
-static double g_inputDebounceSeconds = 0.66; // mouse movement speed to stop screensaver from running
-static POINT g_startMouse = { 0,0 };
-static bool g_startMouseInit = false;
-static const int g_mouseMoveThreshold = 12; // pixels
+static LARGE_INTEGER g_PerfFreq;
+static LARGE_INTEGER g_StartCounter;
+static double g_InputDebounceSeconds = 0.66; // mouse movement speed to stop screensaver from running
+static POINT g_StartMouse = { 0,0 };
+static bool g_StartMouseInit = false;
+static const int g_MouseMoveThreshold = 12; // pixels
 
 // Simple arg parsing
 static void ParseArgs(int argc, wchar_t** argv, wchar_t& modeOut, HWND& hwndOut)
 {
-    modeOut = 0; hwndOut = NULL;
+    modeOut = 0; 
+    hwndOut = NULL;
     if (argc <= 1) return;
     std::wstring a1 = argv[1];
     if (a1.size() >= 2 && (a1[0] == L'/' || a1[0] == L'-'))
@@ -309,7 +310,7 @@ LRESULT CALLBACK FullWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     switch (msg)
     {
         case WM_CREATE:
-            g_startMouseInit = false;
+            g_StartMouseInit = false;
             return 0;
         case WM_SIZE:
             if (rw)
@@ -317,7 +318,7 @@ LRESULT CALLBACK FullWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
                 GetClientRect(hWnd, &rw->rc);
                 DestroyBackbuffer(rw);
                 CreateBackbuffer(rw);
-                g_startMouseInit = false;
+                g_StartMouseInit = false;
             }
             return 0;
         case WM_KEYDOWN:
@@ -329,22 +330,22 @@ LRESULT CALLBACK FullWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         {
             LARGE_INTEGER now;
             QueryPerformanceCounter(&now);
-            double seconds = double(now.QuadPart - g_startCounter.QuadPart) / double(g_perfFreq.QuadPart);
-            if (seconds < g_inputDebounceSeconds) { return 0; }
+            double seconds = double(now.QuadPart - g_StartCounter.QuadPart) / double(g_PerfFreq.QuadPart);
+            if (seconds < g_InputDebounceSeconds) { return 0; }
             if (!ForegroundIsOurWindow()) { return 0; }
             if (msg == WM_MOUSEMOVE)
             {
                 POINT cur; GetCursorPos(&cur);
-                if (!g_startMouseInit)
+                if (!g_StartMouseInit)
                 {
-                    g_startMouse = cur;
-                    g_startMouseInit = true;
+                    g_StartMouse = cur;
+                    g_StartMouseInit = true;
                     return 0;
                 }
-                int dx = abs(cur.x - g_startMouse.x), dy = abs(cur.y - g_startMouse.y);
-                if (dx < g_mouseMoveThreshold && dy < g_mouseMoveThreshold) { return 0; }
+                int dx = abs(cur.x - g_StartMouse.x), dy = abs(cur.y - g_StartMouse.y);
+                if (dx < g_MouseMoveThreshold && dy < g_MouseMoveThreshold) { return 0; }
             }
-            g_running = false; PostQuitMessage(0);
+            g_Running = false; PostQuitMessage(0);
             return 0;
         }
         case WM_DESTROY:
@@ -390,14 +391,14 @@ static BOOL CALLBACK MonEnumProc(HMONITOR hMon, HDC, LPRECT, LPARAM)
     {
         WNDCLASSW wc = {}; 
         wc.lpfnWndProc = FullWndProc; 
-        wc.hInstance = g_hInst;
+        wc.hInstance = g_Hinst;
         wc.lpszClassName = L"StarfieldFullClass";
         wc.hCursor = LoadCursor(NULL, IDC_ARROW);
         RegisterClassW(&wc); 
         reg = true;
     }
     HWND hwnd = CreateWindowExW(WS_EX_TOPMOST, L"StarfieldFullClass", L"Starfield", WS_POPUP | WS_VISIBLE,
-        r.left, r.top, r.right - r.left, r.bottom - r.top, NULL, NULL, g_hInst, NULL);
+        r.left, r.top, r.right - r.left, r.bottom - r.top, NULL, NULL, g_Hinst, NULL);
     if (!hwnd)
     {
         delete rw;
@@ -409,7 +410,7 @@ static BOOL CALLBACK MonEnumProc(HMONITOR hMon, HDC, LPRECT, LPARAM)
     GetClientRect(hwnd, &rw->rc);
     CreateBackbuffer(rw);
     InitStars(rw);
-    g_windows.push_back(rw);
+    g_Windows.push_back(rw);
     return TRUE;
 }
 
@@ -417,23 +418,23 @@ static BOOL CALLBACK MonEnumProc(HMONITOR hMon, HDC, LPRECT, LPARAM)
 static void RunFull()
 {
     EnumDisplayMonitors(NULL, NULL, MonEnumProc, 0);
-    QueryPerformanceFrequency(&g_perfFreq);
-    QueryPerformanceCounter(&g_startCounter);
+    QueryPerformanceFrequency(&g_PerfFreq);
+    QueryPerformanceCounter(&g_StartCounter);
     POINT p;
     GetCursorPos(&p);
-    g_startMouse = p;
-    g_startMouseInit = true;
+    g_StartMouse = p;
+    g_StartMouseInit = true;
     LARGE_INTEGER last;
     QueryPerformanceCounter(&last);
     double total = 0.0;
     MSG msg;
-    while (g_running)
+    while (g_Running)
     {
         while (PeekMessageW(&msg, NULL, 0, 0, PM_REMOVE))
         {
             if (msg.message == WM_QUIT)
             {
-                g_running = false;
+                g_Running = false;
                 break;
             }
             TranslateMessage(&msg);
@@ -441,18 +442,18 @@ static void RunFull()
         }
         LARGE_INTEGER now;
         QueryPerformanceCounter(&now);
-        double dt = double(now.QuadPart - last.QuadPart) / double(g_perfFreq.QuadPart);
+        double dt = double(now.QuadPart - last.QuadPart) / double(g_PerfFreq.QuadPart);
         last = now; total += dt;
-        for (auto rw : g_windows) RenderFrame(rw, (float)dt, (float)total);
+        for (auto rw : g_Windows) RenderFrame(rw, (float)dt, (float)total);
         Sleep(8);
     }
-    for (auto rw : g_windows)
+    for (auto rw : g_Windows)
     {
         DestroyBackbuffer(rw);
         if (rw->hwnd) DestroyWindow(rw->hwnd);
         delete rw;
     }
-    g_windows.clear();
+    g_Windows.clear();
 }
 
 // ---------------- Settings dialog programmatic UI ----------------
@@ -462,12 +463,12 @@ enum { CID_OK = 100, CID_CANCEL = 101, CID_EDIT_STARS = 110, CID_EDIT_SPEED = 11
 // Create child controls on given window
 static void CreateSettingsControls(HWND dlg)
 {
-    CreateWindowExW(0, L"STATIC", L"Star count:", WS_CHILD | WS_VISIBLE | SS_LEFT, 10, 10, 80, 18, dlg, NULL, g_hInst, NULL);
-    CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", NULL, WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_LEFT, 100, 8, 80, 20, dlg, (HMENU)CID_EDIT_STARS, g_hInst, NULL);
-    CreateWindowExW(0, L"STATIC", L"Speed:", WS_CHILD | WS_VISIBLE | SS_LEFT, 10, 40, 80, 18, dlg, NULL, g_hInst, NULL);
-    CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", NULL, WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_LEFT, 100, 38, 80, 20, dlg, (HMENU)CID_EDIT_SPEED, g_hInst, NULL);
-    CreateWindowExW(0, L"BUTTON", L"OK", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 80, 70, 80, 26, dlg, (HMENU)CID_OK, g_hInst, NULL);
-    CreateWindowExW(0, L"BUTTON", L"Cancel", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 168, 70, 80, 26, dlg, (HMENU)CID_CANCEL, g_hInst, NULL);
+    CreateWindowExW(0, L"STATIC", L"Star count:", WS_CHILD | WS_VISIBLE | SS_LEFT, 10, 10, 80, 18, dlg, NULL, g_Hinst, NULL);
+    CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", NULL, WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_LEFT, 100, 8, 80, 20, dlg, (HMENU)CID_EDIT_STARS, g_Hinst, NULL);
+    CreateWindowExW(0, L"STATIC", L"Speed:", WS_CHILD | WS_VISIBLE | SS_LEFT, 10, 40, 80, 18, dlg, NULL, g_Hinst, NULL);
+    CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", NULL, WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_LEFT, 100, 38, 80, 20, dlg, (HMENU)CID_EDIT_SPEED, g_Hinst, NULL);
+    CreateWindowExW(0, L"BUTTON", L"OK", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 80, 70, 80, 26, dlg, (HMENU)CID_OK, g_Hinst, NULL);
+    CreateWindowExW(0, L"BUTTON", L"Cancel", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 168, 70, 80, 26, dlg, (HMENU)CID_CANCEL, g_Hinst, NULL);
 }
 
 // Settings window proc handles control actions and closes window
@@ -522,7 +523,7 @@ static void EnsureSettingsClassRegistered()
     if (reg) return;
     WNDCLASSW wc = {};
     wc.lpfnWndProc = SettingsWndProc;
-    wc.hInstance = g_hInst;
+    wc.hInstance = g_Hinst;
     wc.lpszClassName = L"StarfieldSettingsClass";
     wc.hCursor = LoadCursor(NULL, IDC_ARROW);
     wc.hbrBackground = (HBRUSH)(COLOR_BTNFACE + 1);
@@ -539,7 +540,7 @@ static int ShowSettingsModalPopup()
     int x = (sw - w) / 2, y = (sh - h) / 2;
     HWND dlg = CreateWindowExW(WS_EX_DLGMODALFRAME, L"StarfieldSettingsClass", L"Starfield Settings",
         WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU, x, y, w, h,
-        NULL, NULL, g_hInst, NULL);
+        NULL, NULL, g_Hinst, NULL);
     if (!dlg) { return -1; }
     ShowWindow(dlg, SW_SHOW);
     UpdateWindow(dlg);
@@ -559,48 +560,55 @@ static int RunPreview(HWND parent)
     if (!IsWindow(parent)) return 0;
     WNDCLASSW wc = {};
     wc.lpfnWndProc = PreviewProc;
-    wc.hInstance = g_hInst;
+    wc.hInstance = g_Hinst;
     wc.lpszClassName = L"MyStarPre";
     RegisterClassW(&wc);
-    RECT pr; GetClientRect(parent, &pr);
-    HWND child = CreateWindowExW(0, wc.lpszClassName, L"", WS_CHILD | WS_VISIBLE, 0, 0, pr.right - pr.left, pr.bottom - pr.top, parent, NULL, g_hInst, NULL);
+    RECT pr; 
+    GetClientRect(parent, &pr);
+    HWND child = CreateWindowExW(0, wc.lpszClassName, L"", WS_CHILD | WS_VISIBLE, 0, 0, pr.right - pr.left, pr.bottom - pr.top, parent, NULL, g_Hinst, NULL);
     if (!child)
     {
-        UnregisterClassW(wc.lpszClassName, g_hInst);
+        UnregisterClassW(wc.lpszClassName, g_Hinst);
         return 0;
     }
     RenderWindow* rw = new RenderWindow();
-    rw->hwnd = child; rw->isPreview = true; rw->rc = pr;
-    std::random_device rd; rw->rng.seed(rd());
+    rw->hwnd = child; 
+    rw->isPreview = true; 
+    rw->rc = pr;
+    std::random_device rd; 
+    rw->rng.seed(rd());
     CreateBackbuffer(rw);
     InitStars(rw);
-    QueryPerformanceFrequency(&g_perfFreq);
+    QueryPerformanceFrequency(&g_PerfFreq);
     LARGE_INTEGER last;
     QueryPerformanceCounter(&last);
-    double total = 0.0; MSG msg;
-    while (IsWindow(child)) {
+    double total = 0.0; 
+    MSG msg;
+    while (IsWindow(child)) 
+    {
         while (PeekMessageW(&msg, NULL, 0, 0, PM_REMOVE))
         {
             if (msg.message == WM_QUIT) { DestroyWindow(child); break; }
-            TranslateMessage(&msg); DispatchMessageW(&msg);
+            TranslateMessage(&msg); 
+            DispatchMessageW(&msg);
         }
         LARGE_INTEGER now;
         QueryPerformanceCounter(&now);
-        double dt = double(now.QuadPart - last.QuadPart) / double(g_perfFreq.QuadPart);
+        double dt = double(now.QuadPart - last.QuadPart) / double(g_PerfFreq.QuadPart);
         last = now; total += dt;
         RenderFrame(rw, (float)dt, (float)total);
         Sleep(15);
     }
     DestroyBackbuffer(rw);
     DestroyWindow(child);
-    UnregisterClassW(wc.lpszClassName, g_hInst);
+    UnregisterClassW(wc.lpszClassName, g_Hinst);
     delete rw;
     return 0;
 }
 
 // Entry point
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int) {
-    g_hInst = hInstance;
+    g_Hinst = hInstance;
     LoadSettings();
     // log path for verification
     wchar_t modPath[MAX_PATH] = {};
@@ -632,7 +640,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int) {
         }
     }
     // Default: fullscreen
-    g_running = true;
+    g_Running = true;
     RunFull();
     LocalFree(argv);
     return 0;

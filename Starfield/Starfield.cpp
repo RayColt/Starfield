@@ -19,16 +19,18 @@ static LPCWSTR REG_STARS = L"StarCount";
 static LPCWSTR REG_SPEED = L"SpeedPercent";
 
 // Defaults
-static int g_starCount = 600;
-static int g_speed = 60;
+static int g_StarCount = 600;
+static int g_Speed = 60;
 static int g_MaxStars = 5000;
 static int g_MaxSpeed = 300;
-static COLORREF g_color = RGB(255, 255, 255);// TODO: make configurable
+static COLORREF g_Color = RGB(255, 255, 255);// TODO: make configurable
 
 // Registry helpers
 static int GetRegDWORD(LPCWSTR name, int def)
 {
-    HKEY hKey; DWORD val = def; DWORD size = sizeof(val);
+    HKEY hKey; 
+    DWORD val = def; 
+    DWORD size = sizeof(val);
     if (RegOpenKeyExW(HKEY_CURRENT_USER, REG_KEY, 0, KEY_READ, &hKey) == ERROR_SUCCESS)
     {
         RegQueryValueExW(hKey, name, NULL, NULL, (LPBYTE)&val, &size);
@@ -47,13 +49,13 @@ static void SetRegDWORD(LPCWSTR name, DWORD v)
 }
 static void LoadSettings()
 {
-    g_starCount = GetRegDWORD(REG_STARS, g_starCount);
-    g_speed = GetRegDWORD(REG_SPEED, g_speed);
+    g_StarCount = GetRegDWORD(REG_STARS, g_StarCount);
+    g_Speed = GetRegDWORD(REG_SPEED, g_Speed);
 }
 static void SaveSettings()
 {
-    SetRegDWORD(REG_STARS, (DWORD)g_starCount);
-    SetRegDWORD(REG_SPEED, (DWORD)g_speed);
+    SetRegDWORD(REG_STARS, (DWORD)g_StarCount);
+    SetRegDWORD(REG_SPEED, (DWORD)g_Speed);
 }
 
 // Star model
@@ -183,11 +185,11 @@ static void InitStars(RenderWindow* rw)
     int width = max(1, r.right - r.left);
     int height = max(1, r.bottom - r.top);
     rw->stars.clear();
-    rw->stars.resize(g_starCount);
-    int jitterMax = max(1, g_speed / 2 + 1);
+    rw->stars.resize(g_StarCount);
+    int jitterMax = max(1, g_Speed / 2 + 1);
     std::uniform_real_distribution<float> ud01(0.0f, 1.0f);
 
-    for (int i = 0; i < g_starCount; ++i)
+    for (int i = 0; i < g_StarCount; ++i)
     {
         float fx = ud01(rw->rng);
         float fy = ud01(rw->rng);
@@ -199,7 +201,7 @@ static void InitStars(RenderWindow* rw)
 
         // deep range (classic)
         rw->stars[i].z = fz * (Z_MAX - Z_MIN) + Z_MIN;
-        rw->stars[i].speed = (float)g_speed + float(rw->rng() % jitterMax);
+        rw->stars[i].speed = (float)g_Speed + float(rw->rng() % jitterMax);
     }
 }
 
@@ -216,7 +218,7 @@ static void RenderFrame(RenderWindow* rw, float dt, float totalTime)
     FillRect(rw->backHdc, &fill, (HBRUSH)GetStockObject(BLACK_BRUSH));
 
     HPEN oldPen = (HPEN)SelectObject(rw->backHdc, GetStockObject(NULL_PEN));
-    int baseR = GetRValue(g_color), baseG = GetGValue(g_color), baseB = GetBValue(g_color);
+    int baseR = GetRValue(g_Color), baseG = GetGValue(g_Color), baseB = GetBValue(g_Color);
 
     // subtle pulse
     float pulse = 1.0f + 0.05f * sinf(totalTime * 1.5f);
@@ -236,8 +238,8 @@ static void RenderFrame(RenderWindow* rw, float dt, float totalTime)
             s.x = (fx - 0.5f) * (float)w * 2.0f;
             s.y = (fy - 0.5f) * (float)h * 2.0f;
             s.z = fz * (Z_MAX - Z_MIN) + Z_MIN;
-            int jitterMax = max(1, g_speed / 2 + 1);
-            s.speed = (float)g_speed + float(rw->rng() % jitterMax);
+            int jitterMax = max(1, g_Speed / 2 + 1);
+            s.speed = (float)g_Speed + float(rw->rng() % jitterMax);
         }
 
         // projection using small focal factor
@@ -476,8 +478,8 @@ LRESULT CALLBACK SettingsWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPar
         case WM_CREATE:
         {
             CreateSettingsControls(hWnd);
-            SetDlgItemInt(hWnd, CID_EDIT_STARS, g_starCount, FALSE);
-            SetDlgItemInt(hWnd, CID_EDIT_SPEED, g_speed, FALSE);
+            SetDlgItemInt(hWnd, CID_EDIT_STARS, g_StarCount, FALSE);
+            SetDlgItemInt(hWnd, CID_EDIT_SPEED, g_Speed, FALSE);
             return 0;
         }
         case WM_COMMAND:
@@ -487,13 +489,13 @@ LRESULT CALLBACK SettingsWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPar
             {
                 BOOL ok;
                 int stars = GetDlgItemInt(hWnd, CID_EDIT_STARS, &ok, FALSE); 
-                if (!ok) stars = g_starCount;
+                if (!ok) stars = g_StarCount;
                 stars = std::fmax(10, std::fmin(g_MaxStars, stars));
                 int speed = GetDlgItemInt(hWnd, CID_EDIT_SPEED, &ok, FALSE); 
-                if (!ok) speed = g_speed;
+                if (!ok) speed = g_Speed;
                 speed = std::fmax(10, std::fmin(g_MaxSpeed, speed));
-                g_starCount = stars; 
-                g_speed = speed;
+                g_StarCount = stars; 
+                g_Speed = speed;
                 SaveSettings();
                 DestroyWindow(hWnd);
                 return 0;

@@ -604,14 +604,16 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int) {
     if (mode == 'c')
     {
         ShowSettingsModalPopup();
-        LocalFree(argv); return 0;
+        LocalFree(argv); 
+        return 0;
     }
     if (mode == 'p')
     {
         if (argH)
         {
             RunPreview(argH);
-            LocalFree(argv); return 0;
+            LocalFree(argv); 
+            return 0;
         }
     }
     // Default: fullscreen

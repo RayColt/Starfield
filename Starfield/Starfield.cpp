@@ -128,7 +128,9 @@ static bool CreateBackbuffer(RenderWindow* rw)
         SelectObject(rw->backHdc, rw->oldBackBmp);
         DeleteObject(rw->backBmp);
         DeleteDC(rw->backHdc);
-        rw->backHdc = NULL; rw->backBmp = NULL; rw->oldBackBmp = NULL;
+        rw->backHdc = NULL; 
+        rw->backBmp = NULL; 
+        rw->oldBackBmp = NULL;
     }
     int w = max(1, rw->rc.right - rw->rc.left);
     int h = max(1, rw->rc.bottom - rw->rc.top);

@@ -356,7 +356,8 @@ LRESULT CALLBACK PreviewProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     switch (msg)
     {
-        case WM_ERASEBKGND: return 1;
+        case WM_ERASEBKGND: 
+            return 1;
         case WM_PAINT:
         {
             PAINTSTRUCT ps;
@@ -365,7 +366,8 @@ LRESULT CALLBACK PreviewProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
             EndPaint(hWnd, &ps);
             return 0;
         }
-        default: return DefWindowProcW(hWnd, msg, wParam, lParam);
+        default: 
+            return DefWindowProcW(hWnd, msg, wParam, lParam);
     }
 }
 

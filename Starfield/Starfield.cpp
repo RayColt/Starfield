@@ -298,11 +298,14 @@ static bool ForegroundIsOurWindow()
 }
 
 // Fullscreen window proc (uses input filtering)
-LRESULT CALLBACK FullWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+LRESULT CALLBACK FullWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) 
+{
     RenderWindow* rw = (RenderWindow*)GetWindowLongPtrW(hWnd, GWLP_USERDATA);
     switch (msg)
     {
-        case WM_CREATE: g_startMouseInit = false; return 0;
+        case WM_CREATE: 
+            g_startMouseInit = false; 
+            return 0;
         case WM_SIZE:
             if (rw)
             {
@@ -319,7 +322,8 @@ LRESULT CALLBACK FullWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) 
         case WM_XBUTTONDOWN:
         case WM_MOUSEMOVE:
         {
-            LARGE_INTEGER now; QueryPerformanceCounter(&now);
+            LARGE_INTEGER now;
+            QueryPerformanceCounter(&now);
             double seconds = double(now.QuadPart - g_startCounter.QuadPart) / double(g_perfFreq.QuadPart);
             if (seconds < g_inputDebounceSeconds) { return 0; }
             if (!ForegroundIsOurWindow()) { return 0; }
@@ -358,7 +362,8 @@ LRESULT CALLBACK PreviewProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 // Monitor enumeration -> create fullscreen windows
 static BOOL CALLBACK MonEnumProc(HMONITOR hMon, HDC, LPRECT, LPARAM)
 {
-    MONITORINFOEXW mi; mi.cbSize = sizeof(mi);
+    MONITORINFOEXW mi; 
+    mi.cbSize = sizeof(mi);
     if (!GetMonitorInfoW(hMon, &mi)) return TRUE;
     RECT r = mi.rcMonitor;
     RenderWindow* rw = new RenderWindow();
@@ -392,7 +397,8 @@ static void RunFull()
     QueryPerformanceCounter(&g_startCounter);
     POINT p; GetCursorPos(&p); g_startMouse = p; g_startMouseInit = true;
     LARGE_INTEGER last; QueryPerformanceCounter(&last);
-    double total = 0.0; MSG msg;
+    double total = 0.0; 
+    MSG msg;
     while (g_running)
     {
         while (PeekMessageW(&msg, NULL, 0, 0, PM_REMOVE)) 

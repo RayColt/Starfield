@@ -96,17 +96,17 @@ static void ParseArgs(int argc, wchar_t** argv, wchar_t& modeOut, HWND& hwndOut)
     modeOut = 0; hwndOut = NULL;
     if (argc <= 1) return;
     std::wstring a1 = argv[1];
-    if (a1.size() >= 2 && (a1[0] == L'/' || a1[0] == L'-')) 
+    if (a1.size() >= 2 && (a1[0] == L'/' || a1[0] == L'-'))
     {
         wchar_t c = towlower(a1[1]);
         modeOut = c;
         size_t colon = a1.find(L':');
-        if (colon != std::wstring::npos) 
+        if (colon != std::wstring::npos)
         {
             std::wstring num = a1.substr(colon + 1);
             if (!num.empty()) hwndOut = (HWND)_wcstoui64(num.c_str(), nullptr, 0);
         }
-        else if (argc >= 3) 
+        else if (argc >= 3)
         {
             std::wstring a2 = argv[2];
             bool numeric = !a2.empty();
@@ -134,7 +134,7 @@ static bool CreateBackbuffer(RenderWindow* rw)
     int h = max(1, rw->rc.bottom - rw->rc.top);
     HDC mem = CreateCompatibleDC(wnd);
     HBITMAP bmp = CreateCompatibleBitmap(wnd, w, h);
-    if (!mem || !bmp) 
+    if (!mem || !bmp)
     {
         if (mem) DeleteDC(mem);
         ReleaseDC(rw->hwnd, wnd);
@@ -164,7 +164,7 @@ static void DestroyBackbuffer(RenderWindow* rw)
 }
 
 // InitStars: centered world coords (so projection works predictably)
-// Smaller Z_MIN(closer to 0) makes stars appear larger and move faster 
+// Smaller Z_MIN(closer to 0) makes stars appear larger and move faster
 // as they approach because projection uses 1 / z.
 static const float Z_MIN = 2.0f;
 // decrease Z_MAX (e.g., 800) to bring more stars visually forward
@@ -255,7 +255,7 @@ static void RenderFrame(RenderWindow* rw, float dt, float totalTime)
         // map to bucket
         int bucket = (int)((intensity) / (256.0f / BUCKETS));
         bucket = max(0, min(BUCKETS - 1, bucket));
-        if (!brushes[bucket]) 
+        if (!brushes[bucket])
         {
             int br = (baseR * intensity) / 255;
             int bg = (baseG * intensity) / 255;
@@ -276,9 +276,9 @@ static void RenderFrame(RenderWindow* rw, float dt, float totalTime)
         SelectObject(rw->backHdc, oldBrush);
     }
     // cleanup
-    for (int i = 0; i < BUCKETS; ++i) if (brushes[i]) 
-    { 
-        DeleteObject(brushes[i]); brushes[i] = NULL; 
+    for (int i = 0; i < BUCKETS; ++i) if (brushes[i])
+    {
+        DeleteObject(brushes[i]); brushes[i] = NULL;
     }
     SelectObject(rw->backHdc, oldPen);
     // blit
@@ -290,21 +290,21 @@ static void RenderFrame(RenderWindow* rw, float dt, float totalTime)
 // ---- Foreground check and window procs
 static bool ForegroundIsOurWindow()
 {
-    HWND fg = GetForegroundWindow(); 
+    HWND fg = GetForegroundWindow();
     if (!fg) return false;
-    DWORD fgPid = 0; 
-    GetWindowThreadProcessId(fg, &fgPid); 
+    DWORD fgPid = 0;
+    GetWindowThreadProcessId(fg, &fgPid);
     return (fgPid == GetCurrentProcessId());
 }
 
 // Fullscreen window proc (uses input filtering)
-LRESULT CALLBACK FullWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) 
+LRESULT CALLBACK FullWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     RenderWindow* rw = (RenderWindow*)GetWindowLongPtrW(hWnd, GWLP_USERDATA);
     switch (msg)
     {
-        case WM_CREATE: 
-            g_startMouseInit = false; 
+        case WM_CREATE:
+            g_startMouseInit = false;
             return 0;
         case WM_SIZE:
             if (rw)
@@ -330,11 +330,11 @@ LRESULT CALLBACK FullWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
             if (msg == WM_MOUSEMOVE)
             {
                 POINT cur; GetCursorPos(&cur);
-                if (!g_startMouseInit) 
-                { 
+                if (!g_startMouseInit)
+                {
                     g_startMouse = cur;
-                    g_startMouseInit = true; 
-                    return 0; 
+                    g_startMouseInit = true;
+                    return 0;
                 }
                 int dx = abs(cur.x - g_startMouse.x), dy = abs(cur.y - g_startMouse.y);
                 if (dx < g_mouseMoveThreshold && dy < g_mouseMoveThreshold) { return 0; }
@@ -342,9 +342,9 @@ LRESULT CALLBACK FullWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
             g_running = false; PostQuitMessage(0);
             return 0;
         }
-        case WM_DESTROY: 
+        case WM_DESTROY:
             return 0;
-        default: 
+        default:
             return DefWindowProcW(hWnd, msg, wParam, lParam);
     }
 }
@@ -352,16 +352,16 @@ LRESULT CALLBACK FullWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 // Preview proc
 LRESULT CALLBACK PreviewProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-    switch (msg) 
+    switch (msg)
     {
         case WM_ERASEBKGND: return 1;
-        case WM_PAINT: 
-        { 
-            PAINTSTRUCT ps; 
-            HDC hdc = BeginPaint(hWnd, &ps); 
-            FillRect(hdc, &ps.rcPaint, (HBRUSH)GetStockObject(BLACK_BRUSH)); 
-            EndPaint(hWnd, &ps); 
-            return 0; 
+        case WM_PAINT:
+        {
+            PAINTSTRUCT ps;
+            HDC hdc = BeginPaint(hWnd, &ps);
+            FillRect(hdc, &ps.rcPaint, (HBRUSH)GetStockObject(BLACK_BRUSH));
+            EndPaint(hWnd, &ps);
+            return 0;
         }
         default: return DefWindowProcW(hWnd, msg, wParam, lParam);
     }
@@ -370,13 +370,13 @@ LRESULT CALLBACK PreviewProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 // Monitor enumeration -> create fullscreen windows
 static BOOL CALLBACK MonEnumProc(HMONITOR hMon, HDC, LPRECT, LPARAM)
 {
-    MONITORINFOEXW mi; 
+    MONITORINFOEXW mi;
     mi.cbSize = sizeof(mi);
     if (!GetMonitorInfoW(hMon, &mi)) return TRUE;
     RECT r = mi.rcMonitor;
     RenderWindow* rw = new RenderWindow();
-    rw->rc = r; 
-    std::random_device rd; 
+    rw->rc = r;
+    std::random_device rd;
     rw->rng.seed(rd());
     static bool reg = false;
     if (!reg)
@@ -386,13 +386,13 @@ static BOOL CALLBACK MonEnumProc(HMONITOR hMon, HDC, LPRECT, LPARAM)
     }
     HWND hwnd = CreateWindowExW(WS_EX_TOPMOST, L"StarfieldFullClass", L"Starfield", WS_POPUP | WS_VISIBLE,
         r.left, r.top, r.right - r.left, r.bottom - r.top, NULL, NULL, g_hInst, NULL);
-    if (!hwnd) 
-    { 
-        delete rw; 
-        return TRUE; 
+    if (!hwnd)
+    {
+        delete rw;
+        return TRUE;
     }
-    rw->hwnd = hwnd; 
-    SetWindowLongPtrW(hwnd, GWLP_USERDATA, (LONG_PTR)rw); 
+    rw->hwnd = hwnd;
+    SetWindowLongPtrW(hwnd, GWLP_USERDATA, (LONG_PTR)rw);
     ShowWindow(hwnd, SW_SHOW);
     GetClientRect(hwnd, &rw->rc);
     CreateBackbuffer(rw);
@@ -407,27 +407,27 @@ static void RunFull()
     EnumDisplayMonitors(NULL, NULL, MonEnumProc, 0);
     QueryPerformanceFrequency(&g_perfFreq);
     QueryPerformanceCounter(&g_startCounter);
-    POINT p; 
-    GetCursorPos(&p); 
-    g_startMouse = p; 
+    POINT p;
+    GetCursorPos(&p);
+    g_startMouse = p;
     g_startMouseInit = true;
-    LARGE_INTEGER last; 
+    LARGE_INTEGER last;
     QueryPerformanceCounter(&last);
-    double total = 0.0; 
+    double total = 0.0;
     MSG msg;
     while (g_running)
     {
-        while (PeekMessageW(&msg, NULL, 0, 0, PM_REMOVE)) 
-        { 
-            if (msg.message == WM_QUIT) 
-            { 
-                g_running = false; 
-                break; 
-            } 
+        while (PeekMessageW(&msg, NULL, 0, 0, PM_REMOVE))
+        {
+            if (msg.message == WM_QUIT)
+            {
+                g_running = false;
+                break;
+            }
             TranslateMessage(&msg);
-            DispatchMessageW(&msg); 
+            DispatchMessageW(&msg);
         }
-        LARGE_INTEGER now; 
+        LARGE_INTEGER now;
         QueryPerformanceCounter(&now);
         double dt = double(now.QuadPart - last.QuadPart) / double(g_perfFreq.QuadPart);
         last = now; total += dt;
@@ -542,25 +542,25 @@ static int ShowSettingsModalPopup()
 static int RunPreview(HWND parent)
 {
     if (!IsWindow(parent)) return 0;
-    WNDCLASSW wc = {}; 
-    wc.lpfnWndProc = PreviewProc; 
-    wc.hInstance = g_hInst; 
+    WNDCLASSW wc = {};
+    wc.lpfnWndProc = PreviewProc;
+    wc.hInstance = g_hInst;
     wc.lpszClassName = L"MyStarPre";
     RegisterClassW(&wc);
     RECT pr; GetClientRect(parent, &pr);
     HWND child = CreateWindowExW(0, wc.lpszClassName, L"", WS_CHILD | WS_VISIBLE, 0, 0, pr.right - pr.left, pr.bottom - pr.top, parent, NULL, g_hInst, NULL);
     if (!child)
-    { 
-        UnregisterClassW(wc.lpszClassName, g_hInst); 
-        return 0; 
+    {
+        UnregisterClassW(wc.lpszClassName, g_hInst);
+        return 0;
     }
     RenderWindow* rw = new RenderWindow();
     rw->hwnd = child; rw->isPreview = true; rw->rc = pr;
     std::random_device rd; rw->rng.seed(rd());
-    CreateBackbuffer(rw); 
+    CreateBackbuffer(rw);
     InitStars(rw);
     QueryPerformanceFrequency(&g_perfFreq);
-    LARGE_INTEGER last; 
+    LARGE_INTEGER last;
     QueryPerformanceCounter(&last);
     double total = 0.0; MSG msg;
     while (IsWindow(child)) {
@@ -569,7 +569,7 @@ static int RunPreview(HWND parent)
             if (msg.message == WM_QUIT) { DestroyWindow(child); break; }
             TranslateMessage(&msg); DispatchMessageW(&msg);
         }
-        LARGE_INTEGER now; 
+        LARGE_INTEGER now;
         QueryPerformanceCounter(&now);
         double dt = double(now.QuadPart - last.QuadPart) / double(g_perfFreq.QuadPart);
         last = now; total += dt;
@@ -590,16 +590,16 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int) {
     // log path for verification
     wchar_t modPath[MAX_PATH] = {};
     GetModuleFileNameW(NULL, modPath, MAX_PATH);
-    char pathLog[512]; 
+    char pathLog[512];
     sprintf_s(pathLog, "Running from: %ws", modPath);
-    int argc = 0; 
+    int argc = 0;
     wchar_t** argv = CommandLineToArgvW(GetCommandLineW(), &argc);
-    wchar_t mode = 0; 
-    HWND argH = NULL; 
+    wchar_t mode = 0;
+    HWND argH = NULL;
     ParseArgs(argc, argv, mode, argH);
-    { 
+    {
         char buf[256];
-        sprintf_s(buf, "Parsed args mode=%c hwnd=%p", mode ? (char)mode : '0', argH); 
+        sprintf_s(buf, "Parsed args mode=%c hwnd=%p", mode ? (char)mode : '0', argH);
     }
     if (mode == 'c')
     {

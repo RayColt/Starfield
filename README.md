@@ -7,4 +7,4 @@ and to run and compile the project in DEBUG/x86 mode!!<br>
 Copy generated Starfield.scr in Root/Debug directory to C:\Windows\System32,<br>
 select it in Settings/Personalization/Lock screen/Screen saver.
 
-<img src=https://github.com/RayColt/Starfield/blob/master/starfield.jpg>
+<img src=https://github.com/RayColt/Starfield/blob/master/Starfield.gif>

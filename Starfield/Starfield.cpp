@@ -534,7 +534,8 @@ static int RunPreview(HWND parent)
     if (!IsWindow(parent)) return 0;
     WNDCLASSW wc = {}; 
     wc.lpfnWndProc = PreviewProc; 
-    wc.hInstance = g_hInst; wc.lpszClassName = L"MyStarPre";
+    wc.hInstance = g_hInst; 
+    wc.lpszClassName = L"MyStarPre";
     RegisterClassW(&wc);
     RECT pr; GetClientRect(parent, &pr);
     HWND child = CreateWindowExW(0, wc.lpszClassName, L"", WS_CHILD | WS_VISIBLE, 0, 0, pr.right - pr.left, pr.bottom - pr.top, parent, NULL, g_hInst, NULL);
@@ -546,7 +547,8 @@ static int RunPreview(HWND parent)
     RenderWindow* rw = new RenderWindow();
     rw->hwnd = child; rw->isPreview = true; rw->rc = pr;
     std::random_device rd; rw->rng.seed(rd());
-    CreateBackbuffer(rw); InitStars(rw);
+    CreateBackbuffer(rw); 
+    InitStars(rw);
     QueryPerformanceFrequency(&g_perfFreq);
     LARGE_INTEGER last; 
     QueryPerformanceCounter(&last);
@@ -578,14 +580,16 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int) {
     // log path for verification
     wchar_t modPath[MAX_PATH] = {};
     GetModuleFileNameW(NULL, modPath, MAX_PATH);
-    char pathLog[512]; sprintf_s(pathLog, "Running from: %ws", modPath);
+    char pathLog[512]; 
+    sprintf_s(pathLog, "Running from: %ws", modPath);
     int argc = 0; 
     wchar_t** argv = CommandLineToArgvW(GetCommandLineW(), &argc);
     wchar_t mode = 0; 
     HWND argH = NULL; 
     ParseArgs(argc, argv, mode, argH);
     { 
-        char buf[256]; sprintf_s(buf, "Parsed args mode=%c hwnd=%p", mode ? (char)mode : '0', argH); 
+        char buf[256];
+        sprintf_s(buf, "Parsed args mode=%c hwnd=%p", mode ? (char)mode : '0', argH); 
     }
     if (mode == 'c')
     {

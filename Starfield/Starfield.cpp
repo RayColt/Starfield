@@ -173,6 +173,7 @@ static const float Z_MAX = 33.0f;
 static const float FOCAL = 9.0f;
 // multiplier that controls drawn core size; increase for larger stars
 static const float SIZE_SCALE = 1.0f;
+
 static void InitStars(RenderWindow* rw)
 {
     if (!rw) return;
@@ -608,7 +609,8 @@ static int RunPreview(HWND parent)
 }
 
 // Entry point
-int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int) {
+int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int) 
+{
     g_Hinst = hInstance;
     LoadSettings();
     // log path for verification

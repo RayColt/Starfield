@@ -4,6 +4,8 @@ A be nice to AI ;-), working C++ Old Skool Starfield screensaver for Windows 11.
 Do not forget to tweak InitStars() to your own convenience<br>
 and to run and compile the project in DEBUG/x86 mode!!<br>
 
+<img src=https://github.com/RayColt/Starfield/blob/master/x86.jpg>
+
 Copy generated Starfield.scr in Root/Debug directory to C:\Windows\System32,<br>
 select it in Settings/Personalization/Lock screen/Screen saver.
 

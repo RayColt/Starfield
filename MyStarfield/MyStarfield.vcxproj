@@ -22,7 +22,7 @@
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
     <ProjectGuid>{97e573bf-21b5-4333-a2e2-958e362e2304}</ProjectGuid>
-    <RootNamespace>Starfield</RootNamespace>
+    <RootNamespace>MyStarfield</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
     <ProjectName>MyStarfield</ProjectName>
   </PropertyGroup>
@@ -94,7 +94,7 @@
     </Link>
     <PostBuildEvent>
       <Command>copy /Y "$(TargetPath)" "$(TargetDir)$(TargetName).scr"</Command>
-      <Message>copies Starfield.exe into Starfield.scr</Message>
+      <Message>copies MyStarfield.exe into MyStarfield.scr</Message>
     </PostBuildEvent>
     <Manifest>
       <AdditionalManifestFiles>

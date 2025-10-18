@@ -267,14 +267,19 @@ static void RenderFrame(RenderWindow* rw, float dt, float totalTime)
             bb = min(255, (int)lroundf(bb * whiten + 255 * (1.0f - whiten)));
             brushes[bucket] = CreateSolidBrush(RGB(br, bg, bb));
         }
+
         // skip if offscreen
         if (px + psz < 0 || px - psz > w || py + psz < 0 || py - psz > h) continue;
-        HBRUSH oldBrush = (HBRUSH)SelectObject(rw->backHdc, brushes[bucket]);
-        Ellipse(rw->backHdc,
-            (int)floorf(px - psz), (int)floorf(py - psz),
-            (int)ceilf(px + psz + 1), (int)ceilf(py + psz + 1));
-        SelectObject(rw->backHdc, oldBrush);
+        HBRUSH oldBrush = nullptr;
+        if (brushes[bucket]) {
+            oldBrush = (HBRUSH)SelectObject(rw->backHdc, brushes[bucket]);
+            Ellipse(rw->backHdc,
+                (int)floorf(px - psz), (int)floorf(py - psz),
+                (int)ceilf(px + psz + 1), (int)ceilf(py + psz + 1));
+            SelectObject(rw->backHdc, oldBrush);
+        }
     }
+
     // cleanup
     for (int i = 0; i < BUCKETS; ++i) if (brushes[i])
     {

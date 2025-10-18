@@ -339,7 +339,8 @@ LRESULT CALLBACK FullWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
                 int dx = abs(cur.x - g_StartMouse.x), dy = abs(cur.y - g_StartMouse.y);
                 if (dx < g_MouseMoveThreshold && dy < g_MouseMoveThreshold) { return 0; }
             }
-            g_Running = false; PostQuitMessage(0);
+            g_Running = false; 
+            PostQuitMessage(0);
             return 0;
         }
         case WM_DESTROY:

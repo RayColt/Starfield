@@ -540,7 +540,7 @@ static int ShowSettingsModalPopup()
     int w = 360, h = 144;
     int sw = GetSystemMetrics(SM_CXSCREEN), sh = GetSystemMetrics(SM_CYSCREEN);
     int x = (sw - w) / 2, y = (sh - h) / 2;
-    HWND dlg = CreateWindowExW(WS_EX_DLGMODALFRAME, L"StarfieldSettingsClass", L"Starfield Settings",
+    HWND dlg = CreateWindowExW(WS_EX_TOOLWINDOW, L"StarfieldSettingsClass", L"MyStarfield Settings",
         WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU, x, y, w, h,
         NULL, NULL, g_Hinst, NULL);
     if (!dlg) { return -1; }

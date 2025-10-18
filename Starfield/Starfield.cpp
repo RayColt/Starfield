@@ -166,10 +166,10 @@ static void DestroyBackbuffer(RenderWindow* rw)
 // InitStars: centered world coords (so projection works predictably)
 // Smaller Z_MIN(closer to 0) makes stars appear larger and move faster
 // as they approach because projection uses 1 / z.
-static const float Z_MIN = 2.0f;
+static const float Z_MIN = 1.0f;
 // decrease Z_MAX (e.g., 800) to bring more stars visually forward
 static const float Z_MAX = 33.0f;
-// FOCAL ~ 1.0 is appropriate for your sample values (x ~ [-1600..1600], z ~ [10..100])
+// FOCAL ~ 1.0 is appropriate for the sample values (x ~ [-1600..1600], z ~ [10..100])
 static const float FOCAL = 9.0f;
 // multiplier that controls drawn core size; increase for larger stars
 static const float SIZE_SCALE = 1.0f;

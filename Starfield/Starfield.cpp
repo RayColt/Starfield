@@ -3,15 +3,7 @@
 // Copy generated Starfield.scr in Debug directory to C:\Windows\System32
 
 #include <windows.h>
-#include <string>
-#include <vector>
 #include <random>
-#include <fstream>
-#include <shellapi.h>
-#include <cmath>
-#include <algorithm>
-
-#pragma comment(lib, "comctl32.lib")
 
 // ---- Config / registry keys
 static LPCWSTR REG_KEY = L"Software\\StarfieldScreensaver";
@@ -165,7 +157,9 @@ static void DestroyBackbuffer(RenderWindow* rw)
         SelectObject(rw->backHdc, rw->oldBackBmp);
         DeleteObject(rw->backBmp);
         DeleteDC(rw->backHdc);
-        rw->backHdc = NULL; rw->backBmp = NULL; rw->oldBackBmp = NULL;
+        rw->backHdc = NULL; 
+        rw->backBmp = NULL; 
+        rw->oldBackBmp = NULL;
     }
 }
 
@@ -443,7 +437,8 @@ static void RunFull()
         LARGE_INTEGER now;
         QueryPerformanceCounter(&now);
         double dt = double(now.QuadPart - last.QuadPart) / double(g_PerfFreq.QuadPart);
-        last = now; total += dt;
+        last = now; 
+        total += dt;
         for (auto rw : g_Windows) RenderFrame(rw, (float)dt, (float)total);
         Sleep(8);
     }

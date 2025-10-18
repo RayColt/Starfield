@@ -15,7 +15,7 @@ static int g_StarCount = 600;
 static int g_Speed = 60;
 static int g_MaxStars = 5000;
 static int g_MaxSpeed = 300;
-static COLORREF g_Color = RGB(255, 255, 255);// TODO: make configurable
+static COLORREF g_Color = RGB(255, 255, 255);// Star Color!
 
 // Registry helpers
 static int GetRegDWORD(LPCWSTR name, int def)
